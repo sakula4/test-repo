@@ -1,0 +1,22 @@
+name: Terraform module to refresh
+description: "Runs any terraform modules"
+inputs:
+  workingdir:
+    description: Working Directory that terraform should execute commands
+    required: true
+  file:
+    required: true
+    description: Input file to output the enabled layers and file path
+
+runs:
+  using: composite
+  steps:
+    - name: Execute scirpt to extract layers
+      shell: bash
+      run: |
+        curl https://raw.githubusercontent.com/sakula4/test-repo/main/scripts/resolveLayers.py -o resolveLayers.py
+        chmod +x ${{ inputs.file }} resolveLayers.py
+        python -u resolveLayers.py dev.json > test.txt
+        cat test.txt
+        cat test.txt >> $GITHUB_OUTPUT
+        echo $GITHUB_OUTPUT      
