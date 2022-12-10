@@ -1,4 +1,4 @@
-name: dispatch receiver
+name: Deploy Databricks
 
 on: 
   workflow_dispatch:
