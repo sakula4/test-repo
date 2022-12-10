@@ -1,0 +1,17 @@
+name: dispatch receiver
+
+on: 
+  repository_dispatch:
+    types:
+      - manual-trigger-mytest
+      - manual-trigger-all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: dispatch trigger
+      if: github.event.action == "YOUR_EVENT_TYPE"
+      run: |
+        echo "repository_dispatch triggered"
