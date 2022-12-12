@@ -57,7 +57,7 @@ tableau_layers = getEnabledKeysFromStack(tableau_stack, enabledKeys)
 abc_layers = getEnabledKeysFromStack(abc_stack, enabledKeys)
 datalake_layers = getEnabledKeysFromStack(datalake_stack, enabledKeys)
 
-print("filepath_map", enabledMap)
+print("filepath_map=", enabledMap)
 print("metadata_layers=", metadata_layers)
 print("datadog_layers=", datadog_layers)
 print("baseline_layers=", baseline_layers)
