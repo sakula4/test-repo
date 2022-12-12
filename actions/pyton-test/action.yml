@@ -6,7 +6,7 @@ inputs:
     required: true
   file:
     required: true
-    description: Input file to output the enabled layers and file path
+    description: Input file to extract the enabled layers 
 outputs:
   metadata_layers: 
     value: ${{ steps.layers.outputs.metadata_layers }}
