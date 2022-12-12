@@ -21,7 +21,9 @@ outputs:
   abc_layers: 
     value: ${{ steps.layers.outputs.abc_layers }}
   datalake_layers: 
-    value: ${{ steps.layers.outputs.datalake_layers }}    
+    value: ${{ steps.layers.outputs.datalake_layers }}
+  filepath_map:
+    value: ${{ steps.layers.outputs.filepath_map }}    
 
 runs:
   using: composite
