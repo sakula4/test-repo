@@ -7,6 +7,14 @@ inputs:
   file:
     required: true
     description: Input file to output the enabled layers and file path
+outputs:
+  metadata_layers: ${{ steps.layers.outputs.metadata_layers }}
+  datadog_layers: ${{ steps.layers.outputs.datadog_layers }}
+  baseline_layers: ${{ steps.layers.outputs.baseline_layers }}
+  networking_layers: ${{ steps.layers.outputs.networking_layers }}
+  tableau_layers: ${{ steps.layers.outputs.tableau_layers }}
+  abc_layers: ${{ steps.layers.outputs.abc_layers }}
+  datalake_layers: ${{ steps.layers.outputs.datalake_layers }}    
 
 runs:
   using: composite
