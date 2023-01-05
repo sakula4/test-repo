@@ -48,14 +48,14 @@ Long lived branches and redundant approvals for same changes.
     checkout feature
     commit id: "Changes to DEV Environment"
     checkout release
-    merge feature tag: "ephem deploy/PR approvals/Deploy to DEV"
+    merge feature tag: "ephem validate/PR approvals/Deploy to DEV"
     commit id: "Deployment to DEV triggers "
     checkout main
     merge release tag: "Auto merge to main"
     checkout feature
     commit id: "Changes to STAGE Environment"
     checkout release
-    merge feature tag: "PR approvals/Deploy to STG"
+    merge feature tag: "Dev validate/PR approvals/Deploy to STG"
     checkout main
     merge release tag: "Auto merge to main"
 ```
