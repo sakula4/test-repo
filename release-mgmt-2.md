@@ -42,23 +42,39 @@ Long lived branches and redundant approvals for same changes.
   gitGraph
     commit
     commit
-    branch release
+    branch feature1
     commit
-    branch feature
-    checkout feature
+    checkout main
+    commit
+    branch feature2
+    commit
+    commit
+    checkout main
+    merge feature2 tag:"ephem validate/PR approvals/Deploy to DEV"
+    commit id:"v1.0.0"
+    checkout feature1
+    commit
+    checkout main
+    merge feature1 tag:"ephem/dev validate/PR approvals/Deploy to STG"
+    commit id:"v1.1.0"
+
+    
+```
+
+<!-- branch feature1
+    checkout feature2
     commit id: "Changes to DEV Environment"
-    checkout release
-    merge feature tag: "ephem validate/PR approvals/Deploy to DEV"
+    checkout feature2
+    merge feature2 tag: "ephem validate/PR approvals/Deploy to DEV"
     commit id: "Deployment to DEV triggers "
     checkout main
-    merge release tag: "Auto merge to main"
-    checkout feature
+    merge feature1 tag: "Auto merge to main"
+    checkout feature1
     commit id: "Changes to STAGE Environment"
-    checkout release
-    merge feature tag: "Dev validate/PR approvals/Deploy to STG"
+    checkout feature1
+    merge feature2 tag: "Dev validate/PR approvals/Deploy to STG"
     checkout main
-    merge release tag: "Auto merge to main"
-```
+    merge feature1 tag: "Auto merge to main" -->
 
 * As per this Strategy, we only have two branches *main* and *release* . Any changes will be commited to the feature branch (cut from release).
 * Once the changes to the respective environemnt (dev,stage,demo,prod) are done, we follow the usual path to raise a PR to be merged to *release*. This triggers the ephem deployment to validate the changes. After the checks and the PR approval, merge is done to release.
