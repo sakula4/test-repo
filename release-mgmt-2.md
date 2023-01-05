@@ -55,7 +55,7 @@ Long lived branches and redundant approvals for same changes.
     checkout feature
     commit id: "Changes to STAGE Environment"
     checkout release
-    merge feature tag: "ephem deploy/PR approvals/Deploy to STG"
+    merge feature tag: "PR approvals/Deploy to STG"
     checkout main
     merge release tag: "Auto merge to main"
 ```
