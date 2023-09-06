@@ -2,6 +2,13 @@ name: Deploy Databricks
 
 on: 
   workflow_dispatch:
+    inputs:
+      deploy:
+        type: boolean
+        default: true
+      environment:
+        type: string
+        default: dev
 
   repository_dispatch:
     types:
@@ -11,6 +18,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{inputs.deploy == 'true' ? inputs.environment : "test"}}
     steps:
     - uses: actions/checkout@v1
     - name: dispatch trigger
