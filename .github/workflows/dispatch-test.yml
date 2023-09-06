@@ -30,7 +30,7 @@ jobs:
         run: |
           url="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/pending_deployments"
           body='{
-            "environment_ids": [ 1295417806 ],
+            "environment_names": [ "production" ],
             "state": "approved",
             "comment": "Auto-approved for automation"
           }'
