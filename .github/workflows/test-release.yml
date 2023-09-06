@@ -49,7 +49,7 @@ jobs:
       - uses: github/branch-deploy@v7.3.1
         id: branch-deploy
         with:
-          trigger: ".apply"
+          trigger: ".deploy"
 
       - uses: actions/checkout@v3
 
