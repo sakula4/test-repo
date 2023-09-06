@@ -8,9 +8,10 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
   pull-requests: write
   issues: write
+  deployments: write
 
 env:
   RELEASE_VERSION: ${{ github.event.tag_name }}
@@ -22,6 +23,10 @@ jobs:
     outputs: 
       issue_number: ${{ steps.create-github-issue.outputs.number }}
     steps:
+      - name: github-context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+              
       - name: create-github-issue
         id: create-github-issue
         uses: dacbd/create-issue-action@main
@@ -49,7 +54,7 @@ jobs:
       - uses: github/branch-deploy@v7.3.1
         id: branch-deploy
         with:
-          trigger: ".deploy"
+          trigger: ".apply"
 
       - uses: actions/checkout@v3
 
