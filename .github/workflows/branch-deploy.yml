@@ -17,6 +17,9 @@ jobs:
     if: ${{ github.event.issue.pull_request }} # only run on pull request comments
     runs-on: ubuntu-latest
     steps:
+      - id: parse-pr
+        run: |
+            echo "Pull Request Description: ${{ github.event.pull_request.body }}"
       # Execute IssueOps branch deployment logic, hooray!
       # This will be used to "gate" all future steps below and conditionally trigger steps/deployments
       - uses: github/branch-deploy@v7.3.1
