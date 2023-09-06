@@ -14,12 +14,14 @@ on:
     types:
       - manual-trigger-mytest
       - manual-trigger-all
+env:
+  test_environment: ${{ inputs.deploy == 'true' ? inputs.environment:"test" }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     environment:
-      name: ${{inputs.deploy == 'true' ? inputs.environment : "test"}}
+      name: ${{env.test_environment}}
     steps:
     - uses: actions/checkout@v1
     - name: dispatch trigger
