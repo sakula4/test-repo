@@ -1,0 +1,75 @@
+name: Deploy_Platform_UAT_STG_PROD
+on:
+  release:
+    types:
+      - published
+  issue_comment:
+    types: [created]        
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  RELEASE_VERSION: ${{ github.event.tag_name }}
+
+jobs:
+  create-github-issue:
+    name: CreateIssue
+    runs-on: ubuntu-latest
+    outputs: 
+      issue_number: ${{ steps.create-github-issue.outputs.number }}
+    steps:
+      - name: create-github-issue
+        id: create-github-issue
+        uses: dacbd/create-issue-action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'deploy-plan-stage-${{ env.RELEASE_VERSION }}'
+          body: |
+            # Context
+
+            [Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            [Codebase](https://github.com/${{ github.repository }}/tree/${{ github.sha }})
+            ```
+            REF         : ${{ github.ref }}
+            SHA         : ${{ github.sha }}
+            REPO        : ${{ github.repository }}
+            RUN_ID      : ${{ github.run_id }}
+            RUN_NUMBER  : ${{ github.run_number}} 
+            RUN_ATTEMPT : ${{ github.run_attempt }}
+            ACTOR       : ${{ github.actor }}
+            WORKFLOW    : ${{ github.workflow }}
+            EVENT       : ${{ github.event_name }}
+            ```
+          labels: release
+  
+      - uses: github/branch-deploy@v7.3.1
+        id: branch-deploy
+        with:
+          trigger: ".apply"
+
+      - uses: actions/checkout@v3
+
+      - shell: bash
+        run: |
+          echo "terraform plan"
+      
+      - name: terraform apply
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
+        run: echo "terraform apply"
+
+
+  close-github-issue:
+    runs-on: ubuntu-latest
+    needs: [create-github-issue]
+    if: ${{ contains(join(needs.create-github-issue.result, ','), 'success') }}
+    steps:
+      - name: close-issue
+        uses: peter-evans/close-issue@v2
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          issue-number: ${{ needs.create-github-issue.outputs.issue_number }}
+  
