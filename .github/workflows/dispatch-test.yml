@@ -28,9 +28,10 @@ jobs:
     steps:
       - shell: bash
         run: |
+          ENV_IDS=$(curl -s -H "Authorization: Bearer ${{ secrets.MY_SECRET }}" "https://api.github.com/repos/${{ github.repository }}/environments" | jq ".environments[].id")
           url="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/pending_deployments"
           body='{
-            "environment_names": [ "production" ],
+            "environment_ids": [ $ENV_IDS ],
             "state": "approved",
             "comment": "Auto-approved for automation"
           }'
