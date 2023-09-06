@@ -5,6 +5,8 @@ on:
   pull_request:
     branches:
       - main
+  issue_comment:
+    types: [created]      
 
 # Permissions needed for reacting and adding comments for IssueOps commands
 permissions:
