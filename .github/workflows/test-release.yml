@@ -26,7 +26,8 @@ jobs:
       - name: github-context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
-              
+        run: echo "GITHUB_CONTEXT"
+
       - name: create-github-issue
         id: create-github-issue
         uses: dacbd/create-issue-action@main
