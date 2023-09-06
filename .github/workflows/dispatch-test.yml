@@ -28,11 +28,11 @@ jobs:
     steps:
       - shell: bash
         run: |
-          ENV_IDS=$(curl -s -H "Authorization: Bearer ${{ secrets.MY_SECRET }}" "https://api.github.com/repos/${{ github.repository }}/environments" | jq -r ".environments[].id")
-          echo $ENV_IDS
+          ENV_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.MY_SECRET }}" "https://api.github.com/repos/${{ github.repository }}/environments/production" | jq -r ".id")
+          echo $ENV_ID
           url="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/pending_deployments"
           body='{
-            "environment_ids": [ $ENV_IDS ],
+            "environment_ids": [ $ENV_ID ],
             "state": "approved",
             "comment": "Auto-approved for automation"
           }'
