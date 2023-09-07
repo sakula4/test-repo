@@ -17,7 +17,7 @@ on:
 
 jobs:
   first-job:
-    if: ${{ inputs.deploy }}
+    if: ${{ !inputs.deploy }}
     runs-on: ubuntu-latest
     steps:
       - shell: bash
