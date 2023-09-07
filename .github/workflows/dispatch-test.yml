@@ -5,7 +5,7 @@ on:
     inputs:
       deploy:
         type: boolean
-        default: true
+        default: false
       environment:
         type: string
         default: dev
@@ -17,6 +17,7 @@ on:
 
 jobs:
   first-job:
+    if: ${{ inputs.deploy }}
     runs-on: ubuntu-latest
     steps:
       - shell: bash
