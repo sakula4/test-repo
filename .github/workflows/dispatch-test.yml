@@ -20,7 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - shell: bash
-        run: echo "first job"
+        run: |
+          echo "first job"
+          echo "deploy - ${{inputs.deploy}}"
+          echo "environment- ${{inputs.environment}}"
 
   auto-approve:
     needs: first-job
