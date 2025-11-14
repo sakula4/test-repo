@@ -1,0 +1,79 @@
+name: Tenant Creation Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_name:
+        description: 'Tenant Name'
+        required: true
+        type: string
+      sub_tenant_name:
+        description: 'Sub-Tenant Name'
+        required: true
+        type: string
+      dev_network_range:
+        description: 'Development Network Range (e.g., 10.1.0.0/16)'
+        required: true
+        type: string
+        default: '10.1.0.0/16'
+      stage_network_range:
+        description: 'Stage Network Range (e.g., 10.2.0.0/16)'
+        required: true
+        type: string
+        default: '10.2.0.0/16'
+      enable_departure:
+        description: 'Enable Departure'
+        required: false
+        type: boolean
+        default: false
+      enable_avscan:
+        description: 'Enable AVScan'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-tenant:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyGithub gitpython
+
+    - name: Run tenant creation script
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TENANT_NAME: ${{ github.event.inputs.tenant_name }}
+        SUB_TENANT_NAME: ${{ github.event.inputs.sub_tenant_name }}
+        DEV_NETWORK_RANGE: ${{ github.event.inputs.dev_network_range }}
+        STAGE_NETWORK_RANGE: ${{ github.event.inputs.stage_network_range }}
+        ENABLE_DEPARTURE: ${{ github.event.inputs.enable_departure }}
+        ENABLE_AVSCAN: ${{ github.event.inputs.enable_avscan }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        python scripts/create_tenant.py
+
+    - name: Display completion message
+      run: |
+        echo "Tenant creation completed for: ${{ github.event.inputs.tenant_name }}"
+        echo "Sub-tenant: ${{ github.event.inputs.sub_tenant_name }}"
+        echo "Dev Network Range: ${{ github.event.inputs.dev_network_range }}"
+        echo "Stage Network Range: ${{ github.event.inputs.stage_network_range }}"
+        echo "Enable Departure: ${{ github.event.inputs.enable_departure }}"
+        echo "Enable AVScan: ${{ github.event.inputs.enable_avscan }}"

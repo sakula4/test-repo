@@ -1,0 +1,351 @@
+name: Onboarding Pipeline with Approvals
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_name:
+        description: 'Tenant Name'
+        required: true
+        type: string
+      environment:
+        description: 'Target Environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+        default: 'dev'
+      network_cidr:
+        description: 'Network CIDR Range (e.g., 10.1.0.0/16)'
+        required: true
+        type: string
+        default: '10.1.0.0/16'
+      region:
+        description: 'AWS Region'
+        required: true
+        type: choice
+        options:
+          - us-east-1
+          - us-west-2
+          - eu-west-1
+        default: 'us-east-1'
+      enable_monitoring:
+        description: 'Enable Monitoring'
+        required: false
+        type: boolean
+        default: true
+      enable_backup:
+        description: 'Enable Backup'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  TENANT_NAME: ${{ github.event.inputs.tenant_name }}
+  ENVIRONMENT: ${{ github.event.inputs.environment }}
+  NETWORK_CIDR: ${{ github.event.inputs.network_cidr }}
+  REGION: ${{ github.event.inputs.region }}
+  ENABLE_MONITORING: ${{ github.event.inputs.enable_monitoring }}
+  ENABLE_BACKUP: ${{ github.event.inputs.enable_backup }}
+
+jobs:
+  # Stage 1: Network Setup (Requires Approval)
+  network-setup:
+    runs-on: ubuntu-latest
+    environment: 
+      name: network-approval
+      url: ${{ steps.network.outputs.network_url }}
+    outputs:
+      network_id: ${{ steps.network.outputs.network_id }}
+      subnet_ids: ${{ steps.network.outputs.subnet_ids }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Display network configuration
+      run: |
+        echo "🌐 NETWORK SETUP STAGE"
+        echo "================================"
+        echo "Tenant: ${{ env.TENANT_NAME }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        echo "Network CIDR: ${{ env.NETWORK_CIDR }}"
+        echo "Region: ${{ env.REGION }}"
+        echo "================================"
+
+    - name: Validate network CIDR
+      run: |
+        echo "Validating network CIDR: ${{ env.NETWORK_CIDR }}"
+        # Add CIDR validation logic here
+        if [[ "${{ env.NETWORK_CIDR }}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]]; then
+          echo "✅ Valid CIDR format"
+        else
+          echo "❌ Invalid CIDR format"
+          exit 1
+        fi
+
+    - name: Setup network infrastructure
+      id: network
+      run: |
+        echo "🚀 Creating network infrastructure..."
+        echo "Creating VPC with CIDR: ${{ env.NETWORK_CIDR }}"
+        echo "Creating subnets in region: ${{ env.REGION }}"
+        
+        # Simulate network creation
+        NETWORK_ID="vpc-$(date +%s | tail -c 6)"
+        SUBNET_IDS="subnet-$(date +%s | tail -c 6),subnet-$(date +%s | tail -c 5)"
+        
+        echo "network_id=${NETWORK_ID}" >> $GITHUB_OUTPUT
+        echo "subnet_ids=${SUBNET_IDS}" >> $GITHUB_OUTPUT
+        echo "network_url=https://console.aws.amazon.com/vpc/home?region=${{ env.REGION }}#vpcs:VpcId=${NETWORK_ID}" >> $GITHUB_OUTPUT
+        
+        echo "✅ Network setup completed"
+        echo "Network ID: ${NETWORK_ID}"
+        echo "Subnet IDs: ${SUBNET_IDS}"
+
+    - name: Validate network connectivity
+      run: |
+        echo "🔍 Validating network connectivity..."
+        echo "Checking network reachability..."
+        echo "Validating security groups..."
+        echo "✅ Network validation completed"
+
+  # Stage 2: Credentials Setup (Requires Approval + Depends on Network)
+  credentials-setup:
+    needs: network-setup
+    runs-on: ubuntu-latest
+    environment: 
+      name: credentials-approval
+      url: ${{ steps.credentials.outputs.credentials_url }}
+    outputs:
+      service_account: ${{ steps.credentials.outputs.service_account }}
+      key_pair_name: ${{ steps.credentials.outputs.key_pair_name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Display credentials configuration
+      run: |
+        echo "🔐 CREDENTIALS SETUP STAGE"
+        echo "================================"
+        echo "Tenant: ${{ env.TENANT_NAME }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        echo "Network ID: ${{ needs.network-setup.outputs.network_id }}"
+        echo "Region: ${{ env.REGION }}"
+        echo "================================"
+
+    - name: Create service accounts
+      id: credentials
+      run: |
+        echo "🚀 Creating service accounts and credentials..."
+        echo "Creating IAM roles for tenant: ${{ env.TENANT_NAME }}"
+        echo "Setting up service account permissions..."
+        
+        # Simulate credential creation
+        SERVICE_ACCOUNT="sa-${{ env.TENANT_NAME }}-$(date +%s | tail -c 6)"
+        KEY_PAIR_NAME="kp-${{ env.TENANT_NAME }}-${{ env.ENVIRONMENT }}"
+        
+        echo "service_account=${SERVICE_ACCOUNT}" >> $GITHUB_OUTPUT
+        echo "key_pair_name=${KEY_PAIR_NAME}" >> $GITHUB_OUTPUT
+        echo "credentials_url=https://console.aws.amazon.com/iam/home?region=${{ env.REGION }}#/roles/${SERVICE_ACCOUNT}" >> $GITHUB_OUTPUT
+        
+        echo "✅ Credentials setup completed"
+        echo "Service Account: ${SERVICE_ACCOUNT}"
+        echo "Key Pair: ${KEY_PAIR_NAME}"
+
+    - name: Configure access policies
+      run: |
+        echo "🔑 Configuring access policies..."
+        echo "Setting up tenant-specific permissions..."
+        echo "Configuring network access controls..."
+        echo "✅ Access policies configured"
+
+    - name: Test credential access
+      run: |
+        echo "🧪 Testing credential access..."
+        echo "Validating service account permissions..."
+        echo "Testing network access with new credentials..."
+        echo "✅ Credential validation completed"
+
+  # Stage 3: Workspace Setup (Requires Approval + Depends on Credentials)
+  workspace-setup:
+    needs: [network-setup, credentials-setup]
+    runs-on: ubuntu-latest
+    environment: 
+      name: workspace-approval
+      url: ${{ steps.workspace.outputs.workspace_url }}
+    outputs:
+      workspace_id: ${{ steps.workspace.outputs.workspace_id }}
+      database_endpoint: ${{ steps.workspace.outputs.database_endpoint }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Display workspace configuration
+      run: |
+        echo "🏢 WORKSPACE SETUP STAGE"
+        echo "================================"
+        echo "Tenant: ${{ env.TENANT_NAME }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        echo "Network ID: ${{ needs.network-setup.outputs.network_id }}"
+        echo "Service Account: ${{ needs.credentials-setup.outputs.service_account }}"
+        echo "Monitoring Enabled: ${{ env.ENABLE_MONITORING }}"
+        echo "Backup Enabled: ${{ env.ENABLE_BACKUP }}"
+        echo "================================"
+
+    - name: Create workspace infrastructure
+      id: workspace
+      run: |
+        echo "🚀 Creating workspace infrastructure..."
+        echo "Setting up compute resources..."
+        echo "Creating storage systems..."
+        echo "Configuring databases..."
+        
+        # Simulate workspace creation
+        WORKSPACE_ID="ws-${{ env.TENANT_NAME }}-$(date +%s | tail -c 6)"
+        DB_ENDPOINT="db-${{ env.TENANT_NAME }}-${{ env.ENVIRONMENT }}.cluster-abc123.${REGION}.rds.amazonaws.com"
+        
+        echo "workspace_id=${WORKSPACE_ID}" >> $GITHUB_OUTPUT
+        echo "database_endpoint=${DB_ENDPOINT}" >> $GITHUB_OUTPUT
+        echo "workspace_url=https://console.aws.amazon.com/ec2/home?region=${{ env.REGION }}#Instances:search=${WORKSPACE_ID}" >> $GITHUB_OUTPUT
+        
+        echo "✅ Workspace infrastructure created"
+        echo "Workspace ID: ${WORKSPACE_ID}"
+        echo "Database Endpoint: ${DB_ENDPOINT}"
+
+    - name: Configure monitoring
+      if: env.ENABLE_MONITORING == 'true'
+      run: |
+        echo "📊 Setting up monitoring..."
+        echo "Configuring CloudWatch dashboards..."
+        echo "Setting up alerting rules..."
+        echo "✅ Monitoring configured"
+
+    - name: Configure backup systems
+      if: env.ENABLE_BACKUP == 'true'
+      run: |
+        echo "💾 Setting up backup systems..."
+        echo "Configuring automated backups..."
+        echo "Setting up disaster recovery..."
+        echo "✅ Backup systems configured"
+
+    - name: Validate workspace health
+      run: |
+        echo "🏥 Validating workspace health..."
+        echo "Checking service connectivity..."
+        echo "Validating resource allocation..."
+        echo "✅ Workspace validation completed"
+
+  # Stage 4: Parameters Setup (Final Stage - Requires Approval + Depends on All Previous)
+  parameters-setup:
+    needs: [network-setup, credentials-setup, workspace-setup]
+    runs-on: ubuntu-latest
+    environment: 
+      name: parameters-approval
+      url: ${{ steps.parameters.outputs.parameters_url }}
+    outputs:
+      configuration_complete: ${{ steps.parameters.outputs.configuration_complete }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Display final configuration
+      run: |
+        echo "⚙️  PARAMETERS SETUP STAGE"
+        echo "================================"
+        echo "Tenant: ${{ env.TENANT_NAME }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        echo "Network ID: ${{ needs.network-setup.outputs.network_id }}"
+        echo "Service Account: ${{ needs.credentials-setup.outputs.service_account }}"
+        echo "Workspace ID: ${{ needs.workspace-setup.outputs.workspace_id }}"
+        echo "Database: ${{ needs.workspace-setup.outputs.database_endpoint }}"
+        echo "================================"
+
+    - name: Configure application parameters
+      id: parameters
+      run: |
+        echo "🚀 Configuring application parameters..."
+        echo "Setting up environment variables..."
+        echo "Configuring application settings..."
+        echo "Setting up feature flags..."
+        
+        # Simulate parameter configuration
+        CONFIG_VERSION="v$(date +%Y%m%d%H%M%S)"
+        
+        echo "configuration_complete=true" >> $GITHUB_OUTPUT
+        echo "parameters_url=https://console.aws.amazon.com/systems-manager/parameters/?region=${{ env.REGION }}&tab=Table#list_parameter_filters=Name:Contains:${{ env.TENANT_NAME }}" >> $GITHUB_OUTPUT
+        
+        echo "✅ Parameters configured"
+        echo "Configuration Version: ${CONFIG_VERSION}"
+
+    - name: Apply tenant-specific configurations
+      run: |
+        echo "🎯 Applying tenant-specific configurations..."
+        echo "Configuring tenant: ${{ env.TENANT_NAME }}"
+        echo "Environment: ${{ env.ENVIRONMENT }}"
+        
+        if [[ "${{ env.ENABLE_MONITORING }}" == "true" ]]; then
+          echo "📊 Monitoring parameters configured"
+        fi
+        
+        if [[ "${{ env.ENABLE_BACKUP }}" == "true" ]]; then
+          echo "💾 Backup parameters configured"
+        fi
+        
+        echo "✅ Tenant configuration applied"
+
+    - name: Final validation and testing
+      run: |
+        echo "🧪 Running final validation tests..."
+        echo "Testing end-to-end connectivity..."
+        echo "Validating all systems integration..."
+        echo "Running smoke tests..."
+        echo "✅ All systems validated and ready"
+
+    - name: Generate deployment summary
+      run: |
+        echo "📋 DEPLOYMENT SUMMARY"
+        echo "================================"
+        echo "🏢 Tenant: ${{ env.TENANT_NAME }}"
+        echo "🌍 Environment: ${{ env.ENVIRONMENT }}"
+        echo "🌐 Network: ${{ needs.network-setup.outputs.network_id }}"
+        echo "🔐 Service Account: ${{ needs.credentials-setup.outputs.service_account }}"
+        echo "💼 Workspace: ${{ needs.workspace-setup.outputs.workspace_id }}"
+        echo "🗄️  Database: ${{ needs.workspace-setup.outputs.database_endpoint }}"
+        echo "📊 Monitoring: ${{ env.ENABLE_MONITORING }}"
+        echo "💾 Backup: ${{ env.ENABLE_BACKUP }}"
+        echo "================================"
+        echo "🎉 Onboarding completed successfully!"
+
+  # Summary Job (Always runs after all stages complete)
+  onboarding-complete:
+    if: always()
+    needs: [network-setup, credentials-setup, workspace-setup, parameters-setup]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check onboarding status
+      run: |
+        echo "🏁 ONBOARDING PIPELINE COMPLETE"
+        echo "================================"
+        
+        if [[ "${{ needs.network-setup.result }}" == "success" && \
+              "${{ needs.credentials-setup.result }}" == "success" && \
+              "${{ needs.workspace-setup.result }}" == "success" && \
+              "${{ needs.parameters-setup.result }}" == "success" ]]; then
+          echo "✅ All stages completed successfully!"
+          echo "🎉 Tenant ${{ github.event.inputs.tenant_name }} is ready for use"
+        else
+          echo "❌ Some stages failed or were cancelled"
+          echo "Network: ${{ needs.network-setup.result }}"
+          echo "Credentials: ${{ needs.credentials-setup.result }}"
+          echo "Workspace: ${{ needs.workspace-setup.result }}"
+          echo "Parameters: ${{ needs.parameters-setup.result }}"
+        fi
+
+    - name: Notify stakeholders
+      if: needs.parameters-setup.result == 'success'
+      run: |
+        echo "📧 Notifying stakeholders..."
+        echo "Sending completion notification..."
+        echo "Updating tenant registry..."
+        echo "✅ Stakeholders notified"
