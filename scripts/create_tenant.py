@@ -52,6 +52,9 @@ class TenantCreator:
         
         # Initialize Git
         self.git_repo = git.Repo(self.repo_root)
+        
+        # Track whether workflows were copied
+        self.workflows_copied = False
 
     def print_inputs(self):
         """Print all input values."""
@@ -87,17 +90,49 @@ class TenantCreator:
         
         print(f"Copying workflow templates from {self.template_workflows_dir} to {self.workflows_dir}")
         
-        # Copy workflow files with placeholder replacement
-        if self.template_workflows_dir.exists():
-            for item in self.template_workflows_dir.iterdir():
-                if item.is_file():
-                    # Replace {{name}} with tenant_name in filename
-                    dest_filename = item.name.replace('{{name}}', self.tenant_name)
-                    dest = self.workflows_dir / dest_filename
-                    self._copy_and_replace_placeholders(item, dest)
-                    print(f"Copied and processed workflow file: {dest_filename}")
+        # Check if we should copy workflows (they require special permissions)
+        skip_workflows = os.getenv('SKIP_WORKFLOWS', 'false').lower() == 'true'
+        
+        if skip_workflows:
+            print("⚠️ Skipping workflow files due to SKIP_WORKFLOWS=true")
+            self.workflows_copied = False
         else:
-            print(f"Warning: Template workflows directory {self.template_workflows_dir} does not exist")
+            # Try to copy workflow files, with fallback to alternative location
+            if self.template_workflows_dir.exists():
+                try:
+                    for item in self.template_workflows_dir.iterdir():
+                        if item.is_file():
+                            # Replace {{name}} with tenant_name in filename
+                            dest_filename = item.name.replace('{{name}}', self.tenant_name)
+                            dest = self.workflows_dir / dest_filename
+                            self._copy_and_replace_placeholders(item, dest)
+                            print(f"Copied and processed workflow file: {dest_filename}")
+                    self.workflows_copied = True
+                except Exception as workflow_error:
+                    print(f"⚠️ Warning: Could not copy workflows to .github/workflows/: {workflow_error}")
+                    print("Trying alternative location...")
+                    
+                    # Create workflows in tenant directory as fallback
+                    try:
+                        workflows_fallback_dir = self.tenant_dir / 'workflows'
+                        workflows_fallback_dir.mkdir(exist_ok=True)
+                        
+                        for item in self.template_workflows_dir.iterdir():
+                            if item.is_file():
+                                dest_filename = item.name.replace('{{name}}', self.tenant_name)
+                                dest = workflows_fallback_dir / dest_filename
+                                self._copy_and_replace_placeholders(item, dest)
+                                print(f"Created workflow file in tenant directory: workflows/{dest_filename}")
+                        
+                        self.workflows_copied = "fallback"
+                        print("✅ Workflows created in tenant directory (manual copy required)")
+                        
+                    except Exception as fallback_error:
+                        print(f"❌ Fallback workflow creation failed: {fallback_error}")
+                        self.workflows_copied = False
+            else:
+                print(f"Warning: Template workflows directory {self.template_workflows_dir} does not exist")
+                self.workflows_copied = False
 
     def _copy_and_replace_placeholders(self, source_file, dest_file):
         """Copy a file and replace placeholder values using Jinja2 templating."""
@@ -180,6 +215,29 @@ class TenantCreator:
         
         return content
 
+    def _get_workflow_status_message(self):
+        """Get the workflow status message for commit."""
+        if self.workflows_copied == True:
+            return "Copied workflows from template-repo/workflows/"
+        elif self.workflows_copied == "fallback":
+            return "Created workflows in tenant/workflows/ (manual copy required)"
+        else:
+            return "Workflows skipped (insufficient permissions)"
+
+    def _get_workflow_pr_message(self):
+        """Get the workflow status message for PR."""
+        if self.workflows_copied == True:
+            return f"""- ✅ Generated workflow from template: `tenant_{self.tenant_name}.yml`
+- ✅ Generated deployment workflow from template: `tenant_{self.tenant_name}_deploy.yml`"""
+        elif self.workflows_copied == "fallback":
+            return f"""- ⚠️ Workflows created in `tenant/{self.tenant_name}/workflows/` (requires manual copy to `.github/workflows/`)
+  - `tenant_{self.tenant_name}.yml` → copy to `.github/workflows/`
+  - `tenant_{self.tenant_name}_deploy.yml` → copy to `.github/workflows/`"""
+        else:
+            return f"""- ❌ Workflow generation skipped due to insufficient permissions
+  - Manual creation required: `tenant_{self.tenant_name}.yml`
+  - Manual creation required: `tenant_{self.tenant_name}_deploy.yml`"""
+
     def create_branch(self):
         """Create a new branch for the tenant."""
         branch_name = f"feature/tenant-{self.tenant_name}"
@@ -235,7 +293,7 @@ class TenantCreator:
 
 Generated from templates:
 - Copied tenant config from template-repo/tenant/
-- Copied workflows from template-repo/workflows/
+- {self._get_workflow_status_message()}
 - Replaced all placeholder values with actual inputs
 """
             
@@ -304,8 +362,7 @@ Generated from templates:
 
 **Changes Made:**
 - ✅ Copied tenant configuration from `template-repo/tenant/` to `tenant/{self.tenant_name}/`
-- ✅ Generated workflow from template: `tenant_{self.tenant_name}.yml`
-- ✅ Generated deployment workflow from template: `tenant_{self.tenant_name}_deploy.yml`
+{self._get_workflow_pr_message()}
 - ✅ Replaced all placeholder values with actual tenant inputs
 
 **Next Steps:**

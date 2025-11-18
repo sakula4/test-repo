@@ -39,6 +39,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
+      workflows: write
       
     steps:
     - name: Checkout repository
@@ -67,6 +68,7 @@ jobs:
         ENABLE_DEPARTURE: ${{ github.event.inputs.enable_departure }}
         ENABLE_AVSCAN: ${{ github.event.inputs.enable_avscan }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        SKIP_WORKFLOWS: false
       run: |
         python scripts/create_tenant.py
 
