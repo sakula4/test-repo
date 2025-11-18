@@ -1,0 +1,30 @@
+label_order:
+  ["namespace", "environment", "tenant", "stage", "name", "attributes"]
+enable_workspace_encryption: true
+enable_serverless: true
+
+enable_peering: false
+migrate_to_tgw: true
+
+projects:
+  {{project_name}}:
+    create_catalog: true
+    enable_managed_catalog: true
+    enable_avscan: {{enable_avscan}}
+    catalogs:
+      {{tenant_name}}_{{project_name}}_dev: "/"
+    buckets:
+      landing:
+        create_queue: true
+        create_dlq: true
+      raw:
+        create_queue: false
+        create_dlq: false
+      catalog:
+        create_queue: false
+        create_dlq: false
+      {% if departure_enabled %}
+      departure:
+        create_queue: false
+        create_dlq: false
+      {% endif %}

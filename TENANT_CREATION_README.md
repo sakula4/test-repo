@@ -18,7 +18,7 @@ The tenant creation system consists of:
 3. Click **"Run workflow"**
 4. Fill in the required inputs:
    - **Tenant Name**: The primary tenant identifier
-   - **Sub-Tenant Name**: The sub-tenant identifier
+   - **Project Name**: The project identifier within the tenant
    - **Development Network Range**: Network CIDR for dev environment (e.g., `10.1.0.0/16`)
    - **Stage Network Range**: Network CIDR for stage environment (e.g., `10.2.0.0/16`)
    - **Enable Departure**: Check if departure functionality should be enabled
@@ -32,7 +32,7 @@ If you need to run the script manually:
 ```bash
 # Set environment variables
 export TENANT_NAME="example-tenant"
-export SUB_TENANT_NAME="example-sub"
+export PROJECT_NAME="example-project"
 export DEV_NETWORK_RANGE="10.1.0.0/16"
 export STAGE_NETWORK_RANGE="10.2.0.0/16"
 export ENABLE_DEPARTURE="true"
@@ -102,29 +102,44 @@ The `tenant_{tenant_name}_deploy.yml` workflow includes:
 - **Dry Run Option**: Test deployments without making changes
 - **Feature Toggles**: Respects departure and AVScan settings
 
-## Placeholder Replacement
+## Template Processing
+
+The system supports both simple placeholder replacement and advanced Jinja2 templating for conditional logic.
+
+### Jinja2 Template Features
+
+The system uses Jinja2 templating engine to support:
+- **Conditional blocks**: `{% if condition %}...{% endif %}`
+- **Variables**: `{{variable_name}}`
+- **Complex logic**: Loop through configurations, conditional sections
+
+### Placeholder Replacement
 
 The system replaces the following placeholders in template files:
 
 ### Available Placeholders
 - `{{tenant_name}}` / `{{name}}` - Tenant name (lowercase)
 - `{{TENANT_NAME}}` - Tenant name (uppercase)
-- `{{sub_tenant_name}}` - Sub-tenant name (lowercase)
-- `{{SUB_TENANT_NAME}}` - Sub-tenant name (uppercase)
+- `{{project_name}}` - Project name (lowercase)
+- `{{PROJECT_NAME}}` - Project name (uppercase)
 - `{{dev_network_range}}` / `{{DEV_NETWORK_RANGE}}` - Development network CIDR
 - `{{stage_network_range}}` / `{{STAGE_NETWORK_RANGE}}` - Stage network CIDR
 - `{{enable_departure}}` / `{{ENABLE_DEPARTURE}}` - Departure feature flag
 - `{{enable_avscan}}` / `{{ENABLE_AVSCAN}}` - AVScan feature flag
+- `departure_enabled` - Boolean variable for Jinja2 conditional blocks
 
 ### Example Template Usage
 ```yaml
 # In template-repo/tenant/dev-us-east-1.yaml
-tenant_name: "{{tenant_name}}"
-sub_tenant: "{{sub_tenant_name}}"
-network_range: "{{dev_network_range}}"
-features:
-  departure_enabled: {{enable_departure}}
-  avscan_enabled: {{enable_avscan}}
+projects:
+  {{project_name}}:
+    enable_avscan: {{enable_avscan}}
+    buckets:
+      {% if departure_enabled %}
+      departure:
+        create_queue: false
+        create_dlq: false
+      {% endif %}
 ```
 
 ## Configuration

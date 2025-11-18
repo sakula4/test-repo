@@ -18,13 +18,14 @@ from pathlib import Path
 import json
 from github import Github
 import git
+from jinja2 import Environment, FileSystemLoader
 
 
 class TenantCreator:
     def __init__(self):
         """Initialize the TenantCreator with environment variables."""
         self.tenant_name = os.getenv('TENANT_NAME')
-        self.sub_tenant_name = os.getenv('SUB_TENANT_NAME')
+        self.project_name = os.getenv('PROJECT_NAME')
         self.dev_network_range = os.getenv('DEV_NETWORK_RANGE')
         self.stage_network_range = os.getenv('STAGE_NETWORK_RANGE')
         self.enable_departure = os.getenv('ENABLE_DEPARTURE', 'false').lower() == 'true'
@@ -33,7 +34,7 @@ class TenantCreator:
         self.github_repository = os.getenv('GITHUB_REPOSITORY')
         
         # Validate required inputs
-        if not all([self.tenant_name, self.sub_tenant_name, self.dev_network_range, 
+        if not all([self.tenant_name, self.project_name, self.dev_network_range, 
                    self.stage_network_range, self.github_token]):
             print("Error: Missing required environment variables")
             sys.exit(1)
@@ -55,7 +56,7 @@ class TenantCreator:
         """Print all input values."""
         print("=== Tenant Creation Inputs ===")
         print(f"Tenant Name: {self.tenant_name}")
-        print(f"Sub-Tenant Name: {self.sub_tenant_name}")
+        print(f"Project Name: {self.project_name}")
         print(f"Development Network Range: {self.dev_network_range}")
         print(f"Stage Network Range: {self.stage_network_range}")
         print(f"Enable Departure: {self.enable_departure}")
@@ -98,13 +99,16 @@ class TenantCreator:
             print(f"Warning: Template workflows directory {self.template_workflows_dir} does not exist")
 
     def _copy_and_replace_placeholders(self, source_file, dest_file):
-        """Copy a file and replace placeholder values."""
+        """Copy a file and replace placeholder values using Jinja2 templating."""
         try:
             # Read the source file
             with open(source_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Replace placeholders
+            # Process with Jinja2 for advanced templating (like departure block)
+            content = self._process_jinja_template(content)
+            
+            # Replace remaining simple placeholders
             content = self._replace_placeholders(content)
             
             # Write to destination
@@ -128,18 +132,41 @@ class TenantCreator:
             elif item.is_dir():
                 self._copy_directory_with_placeholders(item, dest_item)
 
+    def _process_jinja_template(self, content):
+        """Process Jinja2 template content with template variables."""
+        try:
+            # Create Jinja2 environment
+            env = Environment()
+            template = env.from_string(content)
+            
+            # Render template with variables
+            rendered = template.render(
+                tenant_name=self.tenant_name,
+                project_name=self.project_name,
+                dev_network_range=self.dev_network_range,
+                stage_network_range=self.stage_network_range,
+                enable_departure=self.enable_departure,
+                enable_avscan=self.enable_avscan,
+                departure_enabled=self.enable_departure  # Alias for departure_enabled check
+            )
+            return rendered
+            
+        except Exception as e:
+            print(f"Warning: Jinja2 processing failed: {e}. Falling back to simple replacement.")
+            return content
+    
     def _replace_placeholders(self, content):
         """Replace placeholder values in content with actual values."""
         placeholders = {
             '{{tenant_name}}': self.tenant_name,
             '{{name}}': self.tenant_name,
-            '{{sub_tenant_name}}': self.sub_tenant_name,
+            '{{project_name}}': self.project_name,
             '{{dev_network_range}}': self.dev_network_range,
             '{{stage_network_range}}': self.stage_network_range,
             '{{enable_departure}}': str(self.enable_departure).lower(),
             '{{enable_avscan}}': str(self.enable_avscan).lower(),
             '{{TENANT_NAME}}': self.tenant_name.upper(),
-            '{{SUB_TENANT_NAME}}': self.sub_tenant_name.upper(),
+            '{{PROJECT_NAME}}': self.project_name.upper(),
             '{{DEV_NETWORK_RANGE}}': self.dev_network_range,
             '{{STAGE_NETWORK_RANGE}}': self.stage_network_range,
             '{{ENABLE_DEPARTURE}}': str(self.enable_departure).upper(),
@@ -199,7 +226,7 @@ class TenantCreator:
             commit_message = f"""Add tenant: {self.tenant_name}
 
 - Tenant Name: {self.tenant_name}
-- Sub-Tenant: {self.sub_tenant_name}
+- Project Name: {self.project_name}
 - Dev Network: {self.dev_network_range}
 - Stage Network: {self.stage_network_range}
 - Departure Enabled: {self.enable_departure}
@@ -232,7 +259,7 @@ Generated from templates:
 
 **Tenant Details:**
 - **Tenant Name:** {self.tenant_name}
-- **Sub-Tenant Name:** {self.sub_tenant_name}
+- **Project Name:** {self.project_name}
 - **Development Network Range:** {self.dev_network_range}
 - **Stage Network Range:** {self.stage_network_range}
 - **Enable Departure:** {self.enable_departure}

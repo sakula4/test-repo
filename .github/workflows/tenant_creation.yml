@@ -7,8 +7,8 @@ on:
         description: 'Tenant Name'
         required: true
         type: string
-      sub_tenant_name:
-        description: 'Sub-Tenant Name'
+      project_name:
+        description: 'Project Name'
         required: true
         type: string
       dev_network_range:
@@ -54,13 +54,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyGithub gitpython
+        pip install PyGithub gitpython Jinja2
 
     - name: Run tenant creation script
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TENANT_NAME: ${{ github.event.inputs.tenant_name }}
-        SUB_TENANT_NAME: ${{ github.event.inputs.sub_tenant_name }}
+        PROJECT_NAME: ${{ github.event.inputs.project_name }}
         DEV_NETWORK_RANGE: ${{ github.event.inputs.dev_network_range }}
         STAGE_NETWORK_RANGE: ${{ github.event.inputs.stage_network_range }}
         ENABLE_DEPARTURE: ${{ github.event.inputs.enable_departure }}
@@ -72,7 +72,7 @@ jobs:
     - name: Display completion message
       run: |
         echo "Tenant creation completed for: ${{ github.event.inputs.tenant_name }}"
-        echo "Sub-tenant: ${{ github.event.inputs.sub_tenant_name }}"
+        echo "Project: ${{ github.event.inputs.project_name }}"
         echo "Dev Network Range: ${{ github.event.inputs.dev_network_range }}"
         echo "Stage Network Range: ${{ github.event.inputs.stage_network_range }}"
         echo "Enable Departure: ${{ github.event.inputs.enable_departure }}"
