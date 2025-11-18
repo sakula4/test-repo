@@ -246,17 +246,42 @@ Generated from templates:
             # Push to remote
             origin = self.git_repo.remote('origin')
             try:
-                # Force push to handle any conflicts
-                origin.push(refspec=f'{self.branch_name}:{self.branch_name}', force=True)
-                print(f"Pushed branch {self.branch_name} to remote")
+                print(f"Pushing branch {self.branch_name} to remote...")
+                
+                # Get current branch info before push
+                current_branch = self.git_repo.active_branch
+                print(f"Current active branch: {current_branch.name}")
+                print(f"Branch commit: {current_branch.commit.hexsha}")
+                
+                # Push with explicit upstream setting
+                push_info = origin.push(refspec=f'{self.branch_name}:{self.branch_name}', force=True)
+                
+                # Verify push result
+                for info in push_info:
+                    print(f"Push result: {info.summary}")
+                    if info.flags & info.ERROR:
+                        raise Exception(f"Push failed with error: {info.summary}")
+                
+                print(f"✅ Successfully pushed branch {self.branch_name} to remote")
+                
+                # Verify the push by fetching the remote reference
+                try:
+                    origin.fetch(refspec=f'{self.branch_name}:{self.branch_name}')
+                    print(f"✅ Verified branch exists on remote")
+                except Exception as fetch_error:
+                    print(f"⚠️ Could not verify remote branch: {fetch_error}")
+                
             except Exception as push_error:
-                print(f"Push error: {push_error}")
+                print(f"❌ Push error: {push_error}")
                 # Try alternative push method
                 try:
-                    origin.push(self.branch_name)
-                    print(f"Pushed branch {self.branch_name} to remote (alternative method)")
+                    print("Trying alternative push method...")
+                    push_info = origin.push(self.branch_name, force=True)
+                    for info in push_info:
+                        print(f"Alternative push result: {info.summary}")
+                    print(f"✅ Pushed branch {self.branch_name} to remote (alternative method)")
                 except Exception as alt_push_error:
-                    print(f"Alternative push failed: {alt_push_error}")
+                    print(f"❌ Alternative push failed: {alt_push_error}")
                     raise push_error
             
         except Exception as e:
@@ -296,13 +321,36 @@ Generated from templates:
             print(f"Creating PR with branch: {self.branch_name}")
             print(f"Repository: {self.github_repository}")
             
+            # Wait a moment for GitHub to process the push
+            import time
+            time.sleep(2)
+            
             # Verify the branch exists on remote
             try:
                 branches = [branch.name for branch in self.repo.get_branches()]
+                print(f"Available remote branches: {branches}")
                 if self.branch_name not in branches:
-                    print(f"Warning: Branch {self.branch_name} not found in remote branches: {branches}")
+                    print(f"Warning: Branch {self.branch_name} not found in remote branches")
+                    # Try to refresh and check again
+                    time.sleep(3)
+                    branches = [branch.name for branch in self.repo.get_branches()]
+                    print(f"Refreshed remote branches: {branches}")
             except Exception as branch_error:
                 print(f"Warning: Could not verify remote branches: {branch_error}")
+            
+            # Check if branch exists using direct API call
+            try:
+                branch_ref = self.repo.get_git_ref(f"heads/{self.branch_name}")
+                print(f"✅ Branch reference found: {branch_ref.ref}")
+            except Exception as ref_error:
+                print(f"❌ Branch reference not found: {ref_error}")
+                
+                # Try to manually verify the push worked
+                try:
+                    commits = list(self.repo.get_commits(sha=self.branch_name))
+                    print(f"✅ Found {len(commits)} commits on branch {self.branch_name}")
+                except Exception as commit_error:
+                    print(f"❌ Could not access commits on branch: {commit_error}")
             
             # Try different head reference formats
             head_refs_to_try = [
@@ -327,6 +375,44 @@ Generated from templates:
                     last_error = e
                     print(f"Failed with head '{head_ref}': {e}")
                     continue
+            
+            # If all head references failed, try creating the branch reference first
+            if pr is None:
+                try:
+                    print("All head references failed. Trying to create branch reference...")
+                    
+                    # Get the current commit SHA
+                    current_commit = self.git_repo.head.commit.hexsha
+                    print(f"Current commit SHA: {current_commit}")
+                    
+                    # Try to create the branch reference on GitHub
+                    try:
+                        branch_ref = self.repo.create_git_ref(
+                            ref=f"refs/heads/{self.branch_name}",
+                            sha=current_commit
+                        )
+                        print(f"✅ Created branch reference: {branch_ref.ref}")
+                        
+                        # Wait a moment for GitHub to process
+                        import time
+                        time.sleep(2)
+                        
+                        # Now try to create PR again
+                        pr = self.repo.create_pull(
+                            title=pr_title,
+                            body=pr_body,
+                            head=self.branch_name,
+                            base="main"
+                        )
+                        print("✅ Successfully created PR after creating branch reference")
+                        
+                    except Exception as ref_create_error:
+                        print(f"Failed to create branch reference: {ref_create_error}")
+                        raise last_error
+                        
+                except Exception as fallback_error:
+                    print(f"Fallback method failed: {fallback_error}")
+                    raise last_error
             
             if pr is None:
                 raise last_error
