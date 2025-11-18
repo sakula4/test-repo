@@ -59,7 +59,7 @@ jobs:
 
     - name: Run tenant creation script
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
         TENANT_NAME: ${{ github.event.inputs.tenant_name }}
         PROJECT_NAME: ${{ github.event.inputs.project_name }}
         DEV_NETWORK_RANGE: ${{ github.event.inputs.dev_network_range }}
