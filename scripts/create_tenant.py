@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import json
-from github import Github
+from github import Github, Auth
 import git
 from jinja2 import Environment, FileSystemLoader
 
@@ -46,7 +46,8 @@ class TenantCreator:
         self.workflows_dir = self.repo_root / '.github' / 'workflows'
         
         # Initialize GitHub API
-        self.gh = Github(self.github_token)
+        auth = Auth.Token(self.github_token)
+        self.gh = Github(auth=auth)
         self.repo = self.gh.get_repo(self.github_repository)
         
         # Initialize Git
@@ -244,8 +245,19 @@ Generated from templates:
             
             # Push to remote
             origin = self.git_repo.remote('origin')
-            origin.push(refspec=f'{self.branch_name}:{self.branch_name}')
-            print(f"Pushed branch {self.branch_name} to remote")
+            try:
+                # Force push to handle any conflicts
+                origin.push(refspec=f'{self.branch_name}:{self.branch_name}', force=True)
+                print(f"Pushed branch {self.branch_name} to remote")
+            except Exception as push_error:
+                print(f"Push error: {push_error}")
+                # Try alternative push method
+                try:
+                    origin.push(self.branch_name)
+                    print(f"Pushed branch {self.branch_name} to remote (alternative method)")
+                except Exception as alt_push_error:
+                    print(f"Alternative push failed: {alt_push_error}")
+                    raise push_error
             
         except Exception as e:
             print(f"Error committing and pushing changes: {e}")
@@ -281,18 +293,51 @@ Generated from templates:
 *This PR was automatically created by the tenant creation workflow.*
 """
             
-            pr = self.repo.create_pull(
-                title=pr_title,
-                body=pr_body,
-                head=self.branch_name,
-                base="main"
-            )
+            print(f"Creating PR with branch: {self.branch_name}")
+            print(f"Repository: {self.github_repository}")
+            
+            # Verify the branch exists on remote
+            try:
+                branches = [branch.name for branch in self.repo.get_branches()]
+                if self.branch_name not in branches:
+                    print(f"Warning: Branch {self.branch_name} not found in remote branches: {branches}")
+            except Exception as branch_error:
+                print(f"Warning: Could not verify remote branches: {branch_error}")
+            
+            # Try different head reference formats
+            head_refs_to_try = [
+                self.branch_name,  # Simple branch name
+                f"{self.github_repository.split('/')[0]}:{self.branch_name}",  # owner:branch
+            ]
+            
+            pr = None
+            last_error = None
+            
+            for head_ref in head_refs_to_try:
+                try:
+                    print(f"Attempting to create PR with head: {head_ref}")
+                    pr = self.repo.create_pull(
+                        title=pr_title,
+                        body=pr_body,
+                        head=head_ref,
+                        base="main"
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    print(f"Failed with head '{head_ref}': {e}")
+                    continue
+            
+            if pr is None:
+                raise last_error
             
             print(f"Pull request created: {pr.html_url}")
             return pr.html_url
             
         except Exception as e:
             print(f"Error creating pull request: {e}")
+            print(f"Branch name: {self.branch_name}")
+            print(f"Repository: {self.github_repository}")
             sys.exit(1)
 
     def run(self):
