@@ -17,10 +17,16 @@ on:
         required: true
         type: string
         default: 'Standard configuration update'
+      skip_approval:
+        description: 'Skip manual approval steps'
+        required: false
+        type: boolean
+        default: false
 
 env:
   OPERATION_TYPE: ${{ github.event.inputs.operation_type }}
   DESCRIPTION: ${{ github.event.inputs.description }}
+  SKIP_APPROVAL: ${{ github.event.inputs.skip_approval }}
 
 jobs:
   step-by-step-process:
@@ -35,6 +41,7 @@ jobs:
         echo "================================"
         echo "Operation Type: ${{ env.OPERATION_TYPE }}"
         echo "Description: ${{ env.DESCRIPTION }}"
+        echo "Skip Approval: ${{ env.SKIP_APPROVAL }}"
         echo "Initiated by: ${{ github.actor }}"
         echo "Workflow Run: ${{ github.run_id }}"
         echo "================================"
@@ -46,8 +53,9 @@ jobs:
         sleep 2
         echo "✅ Step 1 completed successfully"
 
-    # Approval Gate 1
+    # Approval Gate 1 (Conditional)
     - name: 📋 Approval Required - Proceed to Step 2
+      if: env.SKIP_APPROVAL != 'true'
       uses: trstringer/manual-approval@v1
       with:
         secret: ${{ github.TOKEN }}
@@ -88,11 +96,22 @@ jobs:
         additional-denied-words: 'stop,halt,cancel,abort'
         polling-interval-seconds: 30
 
-    - name: 🔧 Step 2 - Configuration Validation
+    - name: ⚡ Skip Approval Notification - Step 1→2
+      if: env.SKIP_APPROVAL == 'true'
+      run: |
+        echo "� APPROVAL SKIPPED - Proceeding automatically to Step 2"
+        echo "⚠️ Manual approval was bypassed per user request"
+        echo "Continuing with automated execution..."
+
+    - name: �🔧 Step 2 - Configuration Validation
       run: |
         echo "🔧 STEP 2: CONFIGURATION VALIDATION"
         echo "================================"
-        echo "Proceeding after Step 1→2 approval ✅"
+        if [[ "${{ env.SKIP_APPROVAL }}" == "true" ]]; then
+          echo "Proceeding automatically (approval skipped) 🚀"
+        else
+          echo "Proceeding after Step 1→2 approval ✅"
+        fi
         echo "Operation: ${{ env.OPERATION_TYPE }}"
         echo "================================"
         
@@ -120,8 +139,9 @@ jobs:
         sleep 3
         echo "✅ Step 2 completed successfully"
 
-    # Approval Gate 2
+    # Approval Gate 2 (Conditional)
     - name: 📋 Approval Required - Proceed to Step 3
+      if: env.SKIP_APPROVAL != 'true'
       uses: trstringer/manual-approval@v1
       with:
         secret: ${{ github.TOKEN }}
@@ -163,11 +183,22 @@ jobs:
         additional-denied-words: 'stop,halt,cancel,abort,no'
         polling-interval-seconds: 30
 
+    - name: ⚡ Skip Approval Notification - Step 2→3
+      if: env.SKIP_APPROVAL == 'true'
+      run: |
+        echo "🚀 FINAL APPROVAL SKIPPED - Proceeding automatically to execution"
+        echo "⚠️ Final manual approval was bypassed per user request"
+        echo "🚨 AUTOMATED EXECUTION STARTING..."
+
     - name: ⚡ Step 3 - Execute Main Operation
       run: |
         echo "⚡ STEP 3: EXECUTE MAIN OPERATION"
         echo "================================"
-        echo "🚨 FINAL EXECUTION APPROVED ✅"
+        if [[ "${{ env.SKIP_APPROVAL }}" == "true" ]]; then
+          echo "🚨 AUTOMATED EXECUTION (approvals skipped) 🚀"
+        else
+          echo "🚨 FINAL EXECUTION APPROVED ✅"
+        fi
         echo "Operation: ${{ env.OPERATION_TYPE }}"
         echo "Description: ${{ env.DESCRIPTION }}"
         echo "================================"
