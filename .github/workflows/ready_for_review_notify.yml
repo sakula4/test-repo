@@ -1,0 +1,241 @@
+name: 🔔 Ready for Review Notifications
+
+on:
+  schedule:
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run notification'
+        required: false
+        default: 'false'
+
+env:
+  TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+
+jobs:
+  notify-ready-for-review:
+    name: Notify Ready for Review PRs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Get Pull Requests with 'ready for review' label
+        id: get-prs
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              // Get all open pull requests
+              const { data: pullRequests } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                per_page: 100
+              });
+              
+              console.log(`Found ${pullRequests.length} open pull requests`);
+              
+              // Filter PRs with 'ready for review' label
+              const readyForReviewPRs = pullRequests.filter(pr => 
+                pr.labels.some(label => 
+                  label.name.toLowerCase().includes('ready for review') ||
+                  label.name.toLowerCase().includes('ready-for-review')
+                )
+              );
+              
+              console.log(`Found ${readyForReviewPRs.length} PRs ready for review`);
+              
+              // Format PR data for Teams message
+              const prData = readyForReviewPRs.map(pr => {
+                const createdDate = new Date(pr.created_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                });
+                
+                const updatedDate = new Date(pr.updated_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                });
+                
+                return {
+                  number: pr.number,
+                  title: pr.title,
+                  author: pr.user.login,
+                  created: createdDate,
+                  updated: updatedDate,
+                  url: pr.html_url,
+                  draft: pr.draft,
+                  mergeable: pr.mergeable_state,
+                  branch: pr.head.ref,
+                  base: pr.base.ref,
+                  reviewers: pr.requested_reviewers?.map(r => r.login).join(', ') || 'None',
+                  labels: pr.labels.map(l => l.name).join(', ')
+                };
+              });
+              
+              // Set outputs
+              core.setOutput('pr-count', readyForReviewPRs.length);
+              core.setOutput('pr-data', JSON.stringify(prData));
+              
+              return {
+                count: readyForReviewPRs.length,
+                prs: prData
+              };
+              
+            } catch (error) {
+              console.error('Error fetching pull requests:', error);
+              core.setFailed(`Failed to fetch pull requests: ${error.message}`);
+              return { count: 0, prs: [] };
+            }
+
+      - name: Build Teams Message
+        id: build-message
+        if: steps.get-prs.outputs.pr-count > 0
+        run: |
+          PR_DATA='${{ steps.get-prs.outputs.pr-data }}'
+          PR_COUNT='${{ steps.get-prs.outputs.pr-count }}'
+          
+          # Start building the Teams message JSON
+          cat << 'EOF' > teams_message.json
+          {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": "0076D7",
+            "summary": "Pull Requests Ready for Review",
+            "sections": [
+              {
+                "activityTitle": "🔍 Pull Requests Ready for Review",
+                "activitySubtitle": "Repository: ${{ github.repository }}",
+                "activityImage": "https://github.com/images/error/octocat_happy.gif",
+                "facts": [
+                  {
+                    "name": "Total PRs Ready:",
+                    "value": "PR_COUNT_PLACEHOLDER"
+                  },
+                  {
+                    "name": "Repository:",
+                    "value": "${{ github.repository }}"
+                  },
+                  {
+                    "name": "Triggered by:",
+                    "value": "${{ github.event_name }}"
+                  },
+                  {
+                    "name": "Timestamp:",
+                    "value": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                  }
+                ],
+                "markdown": true
+              }
+            ]
+          }
+          EOF
+          
+          # Replace placeholder with actual count
+          sed -i "s/PR_COUNT_PLACEHOLDER/$PR_COUNT/g" teams_message.json
+          
+          # Parse PR data and build table
+          echo "$PR_DATA" | jq -r '
+            def escape_markdown: gsub("[\\[\\]\\(\\)\\*_~`]"; "\\\\&");
+            
+            "| # | Title | Author | Created | Branch | Reviewers | Status |\n" +
+            "|---|-------|--------|---------|---------|-----------|--------|\n" +
+            (.[] | 
+              "| [#\(.number)](\(.url)) | \(.title | escape_markdown | .[0:50] + (if length > 50 then "..." else "" end)) | @\(.author) | \(.created) | `\(.branch)` | \(.reviewers) | \(if .draft then "🔄 Draft" else "✅ Ready" end) |"
+            ) | @text
+          ' > pr_table.md
+          
+          # Read the table content and add it to the Teams message
+          PR_TABLE=$(cat pr_table.md)
+          
+          # Add the table section to the Teams message
+          jq --arg table "$PR_TABLE" '
+            .sections += [{
+              "activityTitle": "📋 Pull Request Details",
+              "text": $table,
+              "markdown": true
+            }]
+          ' teams_message.json > teams_message_final.json
+          
+          # Add potential actions
+          jq '
+            .potentialAction = [
+              {
+                "@type": "OpenUri",
+                "name": "View All Pull Requests",
+                "targets": [
+                  {
+                    "os": "default",
+                    "uri": "https://github.com/${{ github.repository }}/pulls?q=is%3Aopen+is%3Apr+label%3A%22ready+for+review%22"
+                  }
+                ]
+              },
+              {
+                "@type": "OpenUri",
+                "name": "Repository Home",
+                "targets": [
+                  {
+                    "os": "default",
+                    "uri": "https://github.com/${{ github.repository }}"
+                  }
+                ]
+              }
+            ]
+          ' teams_message_final.json > teams_message_complete.json
+          
+          echo "MESSAGE_FILE=teams_message_complete.json" >> $GITHUB_OUTPUT
+
+      - name: Send Teams Notification
+        if: steps.get-prs.outputs.pr-count > 0
+        run: |
+          if [ -z "${{ env.TEAMS_WEBHOOK_URL }}" ]; then
+            echo "⚠️ TEAMS_WEBHOOK_URL secret not configured. Skipping notification."
+            echo "Teams message that would have been sent:"
+            cat ${{ steps.build-message.outputs.MESSAGE_FILE }}
+            exit 0
+          fi
+          
+          echo "📤 Sending Teams notification for ${{ steps.get-prs.outputs.pr-count }} PRs ready for review..."
+          
+          # Send the message to Teams
+          RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
+            -H "Content-Type: application/json" \
+            -d @${{ steps.build-message.outputs.MESSAGE_FILE }} \
+            "${{ env.TEAMS_WEBHOOK_URL }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -c 4)
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+            echo "✅ Successfully sent Teams notification (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Failed to send Teams notification (HTTP $HTTP_CODE)"
+            echo "Response:"
+            cat response.json
+            exit 1
+          fi
+
+      - name: No PRs Ready for Review
+        if: steps.get-prs.outputs.pr-count == 0
+        run: |
+          echo "ℹ️ No pull requests with 'ready for review' label found."
+          echo "Current open PRs: $(gh pr list --state open --json number --jq '. | length')"
+          echo "Skipping Teams notification."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Debug Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teams-notification-debug-${{ github.run_number }}
+          path: |
+            teams_message*.json
+            pr_table.md
+            response.json
+          retention-days: 7

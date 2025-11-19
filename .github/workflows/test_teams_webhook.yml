@@ -1,0 +1,107 @@
+name: 🧪 Test Teams Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: 'Custom test message'
+        required: false
+        default: 'This is a test notification from GitHub Actions'
+
+jobs:
+  test-teams-webhook:
+    name: Test Teams Webhook
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Test Message to Teams
+        run: |
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
+            echo "❌ TEAMS_WEBHOOK_URL secret not configured."
+            echo "Please add the Teams webhook URL as a repository secret named 'TEAMS_WEBHOOK_URL'"
+            echo "See TEAMS_NOTIFICATION_SETUP.md for instructions"
+            exit 1
+          fi
+          
+          # Create test message
+          cat << 'EOF' > test_message.json
+          {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": "28A745",
+            "summary": "GitHub Actions Test",
+            "sections": [
+              {
+                "activityTitle": "🧪 GitHub Actions Teams Integration Test",
+                "activitySubtitle": "Repository: ${{ github.repository }}",
+                "activityImage": "https://github.com/images/error/octocat_happy.gif",
+                "facts": [
+                  {
+                    "name": "Repository:",
+                    "value": "${{ github.repository }}"
+                  },
+                  {
+                    "name": "Triggered by:",
+                    "value": "${{ github.actor }}"
+                  },
+                  {
+                    "name": "Run ID:",
+                    "value": "${{ github.run_id }}"
+                  },
+                  {
+                    "name": "Test Message:",
+                    "value": "${{ github.event.inputs.test_message || 'This is a test notification from GitHub Actions' }}"
+                  },
+                  {
+                    "name": "Timestamp:",
+                    "value": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                  }
+                ],
+                "markdown": true,
+                "text": "✅ **Teams webhook is working correctly!**\n\nYour ready-for-review notifications are properly configured and will be sent to this channel."
+              }
+            ],
+            "potentialAction": [
+              {
+                "@type": "OpenUri",
+                "name": "View Workflow Run",
+                "targets": [
+                  {
+                    "os": "default",
+                    "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+          
+          echo "📤 Sending test message to Teams..."
+          
+          # Send the message to Teams
+          RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
+            -H "Content-Type: application/json" \
+            -d @test_message.json \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -c 4)
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+            echo "✅ Successfully sent test message to Teams (HTTP $HTTP_CODE)"
+            echo "Check your Teams channel for the test notification!"
+          else
+            echo "❌ Failed to send test message (HTTP $HTTP_CODE)"
+            echo "Response:"
+            cat response.json
+            exit 1
+          fi
+      
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teams-test-artifacts-${{ github.run_number }}
+          path: |
+            test_message.json
+            response.json
+          retention-days: 3
