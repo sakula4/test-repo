@@ -142,27 +142,41 @@ jobs:
           sed -i "s/PR_COUNT_PLACEHOLDER/$PR_COUNT/g" teams_message.json
           sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" teams_message.json
           
-          # Parse PR data and build formatted text for Teams
+          # Parse PR data and build HTML table for Teams
           echo "$PR_DATA" | jq -r '
+            "<table style=\"border-collapse: collapse; width: 100%;\">" +
+            "<tr style=\"background-color: #f1f3f4;\">" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">PR</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Title</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Author</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Created</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Branch</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Reviewers</th>" +
+            "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Status</th>" +
+            "</tr>" +
             (.[] | 
-              "### [PR #\(.number): \(.title)](\(.url))\n" +
-              "**👤 Author:** @\(.author)  \n" +
-              "**📅 Created:** \(.created)  \n" +
-              "**🌿 Branch:** \(.branch) → \(.base)  \n" +
-              "**👥 Reviewers:** \(.reviewers)  \n" +
-              "**📊 Status:** \(if .draft then "🔄 Draft" else "✅ Ready for Review" end)  \n\n"
-            )
-          ' > pr_details.md
+              "<tr>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\"><a href=\"\(.url)\">#\(.number)</a></td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.title | .[0:40] + (if length > 40 then "..." else "" end))</td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">@\(.author)</td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.created)</td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.branch)</td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.reviewers)</td>" +
+              "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(if .draft then "🔄 Draft" else "✅ Ready" end)</td>" +
+              "</tr>"
+            ) +
+            "</table>"
+          ' > pr_table.html
           
-          # Read the formatted PR details
-          PR_DETAILS=$(cat pr_details.md)
+          # Read the HTML table
+          PR_TABLE=$(cat pr_table.html)
           
-          # Add the PR details section to the Teams message
-          jq --arg details "$PR_DETAILS" '
+          # Add the PR table section to the Teams message
+          jq --arg table "$PR_TABLE" '
             .sections += [{
               "activityTitle": "📋 Pull Request Details",
-              "text": $details,
-              "markdown": true
+              "text": $table,
+              "markdown": false
             }]
           ' teams_message.json > teams_message_final.json
           
@@ -239,6 +253,6 @@ jobs:
           name: teams-notification-debug-${{ github.run_number }}
           path: |
             teams_message*.json
-            pr_details.md
+            pr_table.html
             response.json
           retention-days: 7
