@@ -142,9 +142,10 @@ jobs:
           sed -i "s/PR_COUNT_PLACEHOLDER/$PR_COUNT/g" teams_message.json
           sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" teams_message.json
           
-          # Parse PR data and build HTML table for Teams
+          # Parse PR data and build HTML table for Teams with proper structure
           echo "$PR_DATA" | jq -r '
             "<table style=\"border-collapse: collapse; width: 100%;\">" +
+            "<thead>" +
             "<tr style=\"background-color: #f1f3f4;\">" +
             "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">PR</th>" +
             "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Title</th>" +
@@ -154,7 +155,9 @@ jobs:
             "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Reviewers</th>" +
             "<th style=\"border: 1px solid #ddd; padding: 8px; text-align: left;\">Status</th>" +
             "</tr>" +
-            (.[] | 
+            "</thead>" +
+            "<tbody>" +
+            (map(
               "<tr>" +
               "<td style=\"border: 1px solid #ddd; padding: 8px;\"><a href=\"\(.url)\">#\(.number)</a></td>" +
               "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.title | .[0:40] + (if length > 40 then "..." else "" end))</td>" +
@@ -164,7 +167,8 @@ jobs:
               "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(.reviewers)</td>" +
               "<td style=\"border: 1px solid #ddd; padding: 8px;\">\(if .draft then "🔄 Draft" else "✅ Ready" end)</td>" +
               "</tr>"
-            ) +
+            ) | join("")) +
+            "</tbody>" +
             "</table>"
           ' > pr_table.html
           
