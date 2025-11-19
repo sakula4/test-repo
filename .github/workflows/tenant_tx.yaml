@@ -1,0 +1,223 @@
+name: {{ tenant_name|title }}
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      aws-region:
+        type: string
+        required: true
+      action:
+        type: string
+        required: false
+        default: "plan"
+      summary: 
+        type: string
+        required: false
+        default: "false"
+env:
+  AWS_REGION: ${{inputs.aws-region}}
+  STACK_VERSION: 0.212.2
+  TENANT: {{ tenant_name }}
+
+concurrency: tenant-{{ tenant_name }}-${{inputs.environment}}-${{inputs.aws-region}}
+
+jobs:
+  workspace:
+    name: workspace
+    runs-on: ubuntu-22.04
+    environment: ${{inputs.environment}}
+    steps:
+      - name: checkout-repo
+        uses: actions/checkout@v4    
+      - name: get-oidc-aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::350828950339:role/gwt-acuity-infra-oidc-role
+          role-duration-seconds: 3600
+          role-session-name: gh-${{env.TENANT}}-dbws
+      - name: get-enabled-modules
+        id: enabled-modules
+        uses: christian-ci/action-yaml-github-output@v2
+        with:
+          file_path: ${{ github.workspace }}/_config/tenants/${{env.TENANT}}/config.yaml
+          main_key: modules
+          sub_key: ${{inputs.aws-region}}
+      - name: network
+        id: network
+        if: ${{ steps.enabled-modules.outputs.network == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: edw
+          working-dir: databricks/network
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}       
+          summary: ${{inputs.summary}}
+      - name: network-peering
+        id: peering
+        if: ${{ steps.enabled-modules.outputs.peering == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: edw
+          working-dir: databricks/peering
+          stack-version: v0.26.3
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}      
+      - name: credentials
+        id: credential
+        if: ${{ steps.enabled-modules.outputs.credentials == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: edw
+          working-dir: databricks/credentials
+          stack-version: 0.68.0
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}          
+          action: ${{inputs.action}} 
+          summary: ${{inputs.summary}}      
+      - name: workspace
+        id: workspace
+        if: ${{ steps.enabled-modules.outputs.workspace == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: edw
+          working-dir: databricks/workspace
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{ inputs.summary }}
+
+    needs: [workspace]
+    name: dss
+    runs-on: ubuntu-22.04
+    environment: ${{inputs.environment}}
+    env:
+      PROJECT: dss
+    steps:
+      - name: checkout-repo
+        uses: actions/checkout@v4    
+      - name: get-oidc-aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::350828950339:role/gwt-acuity-infra-oidc-role
+          role-duration-seconds: 3600
+          role-session-name: gh-${{env.TENANT}}-dbxs
+      - name: get-enabled-modules
+        id: enabled-modules
+        uses: christian-ci/action-yaml-github-output@v2
+        with:
+          file_path: ${{ github.workspace }}/_config/tenants/${{env.TENANT}}/config.yaml
+          main_key: modules
+          sub_key: ${{inputs.aws-region}}
+      - name: dss-encryption
+        id: encryption
+        if: ${{ steps.enabled-modules.outputs.encryption == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: dss
+          working-dir: databricks/encryption
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}
+      - name: dss-datalake
+        id: datalake
+        if: ${{ steps.enabled-modules.outputs.datalake == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: dss
+          working-dir: databricks/datalake
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}
+      - name: dss-parameters
+        if: ${{ steps.enabled-modules.outputs.datalake == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: ${{env.PROJECT}}
+          working-dir: databricks/parameters
+          stack-version: 0.248.2
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}
+      
+    needs: [workspace]
+    name: cef
+    runs-on: ubuntu-22.04
+    environment: ${{inputs.environment}}
+    env:
+      PROJECT: cef
+    steps:
+      - name: checkout-repo
+        uses: actions/checkout@v4    
+      - name: get-oidc-aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::350828950339:role/gwt-acuity-infra-oidc-role
+          role-duration-seconds: 3600
+          role-session-name: gh-${{env.TENANT}}-dbxs
+      - name: get-enabled-modules
+        id: enabled-modules
+        uses: christian-ci/action-yaml-github-output@v2
+        with:
+          file_path: ${{ github.workspace }}/_config/tenants/${{env.TENANT}}/config.yaml
+          main_key: modules
+          sub_key: ${{inputs.aws-region}}
+      - name: encryption
+        id: encryption
+        if: ${{ steps.enabled-modules.outputs.encryption == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: cef
+          working-dir: databricks/encryption
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}
+      - name: datalake
+        id: datalake
+        if: ${{ steps.enabled-modules.outputs.datalake == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: cef
+          working-dir: databricks/datalake
+          stack-version: ${{env.STACK_VERSION}}
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}          
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}       
+      - name: cef-parameters
+        if: ${{ steps.enabled-modules.outputs.datalake == 'true' }}
+        uses: mygainwell/acuity-github-assets/actions/build-run-terraform@v1.0.4
+        with:
+          project: ${{env.PROJECT}}
+          working-dir: databricks/parameters
+          stack-version: 0.248.2
+          environment: ${{inputs.environment}}
+          aws-region: ${{inputs.aws-region}}
+          tenant: ${{env.TENANT}}
+          action: ${{inputs.action}}
+          summary: ${{inputs.summary}}
