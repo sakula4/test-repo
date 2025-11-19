@@ -128,7 +128,7 @@ jobs:
                   },
                   {
                     "name": "Timestamp:",
-                    "value": "$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                    "value": "TIMESTAMP_PLACEHOLDER"
                   }
                 ],
                 "markdown": true
@@ -137,28 +137,31 @@ jobs:
           }
           EOF
           
-          # Replace placeholder with actual count
+          # Replace placeholders with actual values
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
           sed -i "s/PR_COUNT_PLACEHOLDER/$PR_COUNT/g" teams_message.json
+          sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" teams_message.json
           
-          # Parse PR data and build table
+          # Parse PR data and build formatted text for Teams
           echo "$PR_DATA" | jq -r '
-            def escape_markdown: gsub("[\\[\\]\\(\\)\\*_~`]"; "\\\\&");
-            
-            "| # | Title | Author | Created | Branch | Reviewers | Status |\n" +
-            "|---|-------|--------|---------|---------|-----------|--------|\n" +
             (.[] | 
-              "| [#\(.number)](\(.url)) | \(.title | escape_markdown | .[0:50] + (if length > 50 then "..." else "" end)) | @\(.author) | \(.created) | `\(.branch)` | \(.reviewers) | \(if .draft then "🔄 Draft" else "✅ Ready" end) |"
-            ) | @text
-          ' > pr_table.md
+              "### [PR #\(.number): \(.title)](\(.url))\n" +
+              "**👤 Author:** @\(.author)  \n" +
+              "**📅 Created:** \(.created)  \n" +
+              "**🌿 Branch:** \(.branch) → \(.base)  \n" +
+              "**👥 Reviewers:** \(.reviewers)  \n" +
+              "**📊 Status:** \(if .draft then "🔄 Draft" else "✅ Ready for Review" end)  \n\n"
+            )
+          ' > pr_details.md
           
-          # Read the table content and add it to the Teams message
-          PR_TABLE=$(cat pr_table.md)
+          # Read the formatted PR details
+          PR_DETAILS=$(cat pr_details.md)
           
-          # Add the table section to the Teams message
-          jq --arg table "$PR_TABLE" '
+          # Add the PR details section to the Teams message
+          jq --arg details "$PR_DETAILS" '
             .sections += [{
               "activityTitle": "📋 Pull Request Details",
-              "text": $table,
+              "text": $details,
               "markdown": true
             }]
           ' teams_message.json > teams_message_final.json
@@ -236,6 +239,6 @@ jobs:
           name: teams-notification-debug-${{ github.run_number }}
           path: |
             teams_message*.json
-            pr_table.md
+            pr_details.md
             response.json
           retention-days: 7
