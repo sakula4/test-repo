@@ -350,26 +350,45 @@ Generated from templates:
         """Create a pull request for the new tenant."""
         try:
             pr_title = f"Add tenant: {self.tenant_name}"
-            pr_body = f"""## New Tenant Creation
+            pr_body = f"""## 🚀 New Tenant Creation: {self.tenant_name}
 
 **Tenant Details:**
-- **Tenant Name:** {self.tenant_name}
-- **Project Name:** {self.project_name}
-- **Development Network Range:** {self.dev_network_range}
-- **Stage Network Range:** {self.stage_network_range}
-- **Enable Departure:** {self.enable_departure}
-- **Enable AVScan:** {self.enable_avscan}
+- **Tenant Name:** `{self.tenant_name}`
+- **Project Name:** `{self.project_name}`
+- **Development Network Range:** `{self.dev_network_range}`
+- **Stage Network Range:** `{self.stage_network_range}`
+- **Enable Departure:** `{self.enable_departure}`
+- **Enable AVScan:** `{self.enable_avscan}`
 
 **Changes Made:**
-- ✅ Copied tenant configuration from `template-repo/tenant/` to `tenant/{self.tenant_name}/`
+- ✅ Copied tenant configuration from `template-repo/tenant/` to `_config/tenants/{self.tenant_name}/`
 {self._get_workflow_pr_message()}
 - ✅ Replaced all placeholder values with actual tenant inputs
 
-**Next Steps:**
+## 🎯 Demo Onboarding Workflow
+
+This PR includes a **demo sequential onboarding workflow** (`tenant_{self.tenant_name}_onboarding_demo.yml`) that will:
+
+### 📋 Demo Sequential Process:
+1. **Demo Network Plan** → **Demo Approve** → **Demo Network Deploy**
+2. **Demo Network Peering Plan** → **Demo Approve** → **Demo Network Peering Deploy**  
+3. **Demo Workspace Plan** → **Demo Approve** → **Demo Workspace Deploy**
+4. **Demo DSS Components** → **Demo CEF Components**
+
+### 🎯 Demo Purpose:
+This demonstrates the sequential deployment concept with simple print statements and sleep delays. Shows how dependency issues would be solved in the real implementation.
+
+### 🗑️ Demo Cleanup
+After running the demo:
+1. **Review demo output** to understand sequential flow
+2. **Replace with real workflow** for actual deployment
+3. **Delete demo workflow** and use production version
+
+## 📋 Demo Next Steps:
 1. Review the tenant configuration files
-2. Validate network range assignments
-3. Test the workflows
-4. Merge when ready
+2. Validate network range assignments  
+3. **Run the demo onboarding workflow** to see sequential flow
+4. Replace with production workflow when ready
 
 ---
 *This PR was automatically created by the tenant creation workflow.*
