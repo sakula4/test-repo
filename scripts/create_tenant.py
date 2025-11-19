@@ -146,7 +146,10 @@ class TenantCreator:
             
             if is_workflow_file:
                 print(f"Processing workflow file: {source_file.name}")
-                # For workflow files, only do simple placeholder replacement to avoid Jinja2 conflicts
+                # For workflow files, we need to protect GitHub Actions syntax before Jinja2 processing
+                content = self._protect_github_actions_syntax(content)
+                content = self._process_jinja_template(content)
+                content = self._restore_github_actions_syntax(content)
                 content = self._replace_placeholders(content)
             else:
                 # For non-workflow files, use full Jinja2 processing
@@ -204,11 +207,6 @@ class TenantCreator:
     def _process_jinja_template(self, content):
         """Process Jinja2 template content with template variables."""
         try:
-            # Skip Jinja2 processing if content looks like a GitHub Actions workflow
-            if '${{' in content and ('secrets.' in content or 'inputs.' in content or 'github.' in content):
-                print("Skipping Jinja2 processing for GitHub Actions workflow")
-                return content
-                
             # Create Jinja2 environment with custom delimiters to avoid conflicts
             env = Environment(
                 variable_start_string='{{',
