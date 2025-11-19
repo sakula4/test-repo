@@ -1,0 +1,310 @@
+name: 🚀 Tx Demo Onboarding (Sequential)
+
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - '_config/tenants/tx/**'
+      - 'databricks/**'
+      - '.github/workflows/tenant_tx.yaml'
+      - '.github/workflows/tenant_tx_deploy.yaml'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TENANT: tx
+
+jobs:
+  # Get PR Details
+  pr-details:
+    name: 📋 Get PR Details
+    runs-on: ubuntu-22.04
+    outputs:
+      pr-number: ${{ steps.pr.outputs.number }}
+      pr-title: ${{ steps.pr.outputs.title }}
+      pr-author: ${{ steps.pr.outputs.user-login }}
+      tenant-name: ${{ env.TENANT }}
+    steps:
+      - name: Display PR Info
+        run: |
+          echo "🎯 DEMO: Processing Tenant Onboarding for: ${{ env.TENANT }}"
+          echo "📝 This is a demonstration of sequential deployment"
+          echo "👤 Simulating real deployment steps with demo outputs"
+
+  # ========================
+  # DEMO SEQUENTIAL DEPLOYMENT
+  # ========================
+  
+  # Stage 1: Network Plan
+  network-plan-dev:
+    name: 🏗️ Demo Network Plan (Dev)
+    needs: [pr-details]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Demo Network Plan Output
+        run: |
+          echo "🎯 DEMO: network-plan-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🏗️ Component: Network Plan (Demo Mode)"
+
+  # Stage 2: Network Apply Approval
+  approve-network-dev:
+    name: ✅ Approve Network Deploy (Dev)
+    needs: [network-plan-dev]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-dev
+    steps:
+      - name: Approval Gate
+        run: |
+          echo "🎯 Waiting for approval to deploy Network infrastructure"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🏗️ Component: Network"
+
+  # Stage 3: Network Apply
+  network-apply-dev:
+    name: 🚀 Network Deploy (Dev)
+    needs: [approve-network-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Network Apply Output
+        run: |
+          echo "🎯 DEMO: network-apply-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🚀 Component: Network Apply (Demo Mode)"
+
+  # Stage 4: Network Peering Plan
+  network-peering-plan-dev:
+    name: 🔗 Network Peering Plan (Dev)
+    needs: [network-apply-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Network Peering Plan Output
+        run: |
+          echo "🎯 DEMO: network-peering-plan-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🔗 Component: Network Peering Plan (Demo Mode)"
+
+  # Stage 5: Network Peering Apply Approval
+  approve-peering-dev:
+    name: ✅ Approve Peering Deploy (Dev)
+    needs: [network-peering-plan-dev]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-dev
+    steps:
+      - name: Approval Gate
+        run: |
+          echo "🎯 Waiting for approval to deploy Network Peering"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🔗 Component: Network Peering"
+
+  # Stage 6: Network Peering Apply
+  network-peering-apply-dev:
+    name: 🚀 Network Peering Deploy (Dev)
+    needs: [approve-peering-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Network Peering Apply Output
+        run: |
+          echo "🎯 DEMO: network-peering-apply-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🚀 Component: Network Peering Apply (Demo Mode)"
+
+  # Stage 7: Credentials Plan
+  credentials-plan-dev:
+    name: 🔐 Credentials Plan (Dev)
+    needs: [network-peering-apply-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Credentials Plan Output
+        run: |
+          echo "🎯 DEMO: credentials-plan-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🔐 Component: Credentials Plan (Demo Mode)"
+
+  # Stage 8: Credentials Apply Approval
+  approve-credentials-dev:
+    name: ✅ Approve Credentials Deploy (Dev)
+    needs: [credentials-plan-dev]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-dev
+    steps:
+      - name: Approval Gate
+        run: |
+          echo "🎯 Waiting for approval to deploy Credentials"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🔐 Component: Credentials"
+
+  # Stage 9: Credentials Apply
+  credentials-apply-dev:
+    name: 🚀 Credentials Deploy (Dev)
+    needs: [approve-credentials-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Credentials Apply Output
+        run: |
+          echo "🎯 DEMO: credentials-apply-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🚀 Component: Credentials Apply (Demo Mode)"
+
+  # Stage 10: Workspace Plan
+  workspace-plan-dev:
+    name: 🏢 Workspace Plan (Dev)
+    needs: [credentials-apply-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Workspace Plan Output
+        run: |
+          echo "🎯 DEMO: workspace-plan-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🏢 Component: Workspace Plan (Demo Mode)"
+
+  # Stage 11: Workspace Apply Approval
+  approve-workspace-dev:
+    name: ✅ Approve Workspace Deploy (Dev)
+    needs: [workspace-plan-dev]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-dev
+    steps:
+      - name: Approval Gate
+        run: |
+          echo "🎯 Waiting for approval to deploy Workspace"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🏢 Component: Workspace"
+
+  # Stage 12: Workspace Apply
+  workspace-apply-dev:
+    name: 🚀 Workspace Deploy (Dev)
+    needs: [approve-workspace-dev]
+    runs-on: ubuntu-22.04
+    environment: dev
+    steps:
+      - name: Demo Workspace Apply Output
+        run: |
+          echo "🎯 DEMO: workspace-apply-output"
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "🚀 Component: Workspace Apply (Demo Mode)"
+
+  # Final Stage: Cleanup Notification
+  onboarding-complete:
+    name: 🎉 Onboarding Complete
+    needs: [workspace-apply-dev]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Onboarding Success
+        run: |
+          echo "🎉 TENANT ONBOARDING COMPLETED SUCCESSFULLY! 🎉"
+          echo "=============================================="
+          echo "📦 Tenant: ${{ env.TENANT }}"
+          echo "🌍 Environment: Development"
+          echo "✅ All components deployed successfully"
+          echo ""
+          echo "🗑️ NEXT STEPS:"
+          echo "1. Merge this PR to activate the regular deployment workflow"
+          echo "2. Delete this temporary onboarding workflow file"
+          echo "3. Future deployments will use the standard GitOps process"
+          echo ""
+          echo "🔄 GitOps Process Now Active:"
+          echo "- Push to main → Dev deployment"
+          echo "- Tags → Stage/UAT/Prod deployments"
+      - name: Create Cleanup Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `
+            ## 🎉 Tenant Onboarding Completed Successfully!
+            
+            **Tenant**: \`${{ env.TENANT }}\`
+            **Environment**: Development
+            **Status**: ✅ All components deployed
+            
+            ### 🔄 Next Steps:
+            1. **Merge this PR** to activate the regular deployment workflow
+            2. **Delete** the temporary onboarding workflow file: \`.github/workflows/onboarding_workflow_${{ env.TENANT }}.yml\`
+            3. Future deployments will use the standard GitOps process
+            
+            ### 🚀 GitOps Process Now Active:
+            - **Push to main** → Dev deployment  
+            - **Tags (v*.*.*)** → Stage/UAT/Prod deployments
+            
+            The tenant is now ready for production use! 🚀
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Automated Cleanup Stage
+  auto-cleanup:
+    name: 🗑️ Auto Cleanup Workflow
+    needs: [onboarding-complete]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install GitPython PyGithub
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract branch name
+        id: branch
+        run: |
+          echo "branch_name=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
+          echo "📋 Branch: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Run cleanup script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🗑️ Running automated cleanup for branch: ${{ steps.branch.outputs.branch_name }}"
+          python scripts/cleanup_onboard.py "${{ steps.branch.outputs.branch_name }}" --verbose
+
+      - name: Cleanup completion
+        run: |
+          echo "✅ AUTOMATED CLEANUP COMPLETED!"
+          echo "================================"
+          echo "🗑️ Onboarding workflow file removed"
+          echo "💾 Changes committed and pushed"
+          echo "💬 PR comment added"
+          echo ""
+          echo "🚀 Ready to merge PR for full GitOps activation!"
