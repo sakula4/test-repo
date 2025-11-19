@@ -141,11 +141,17 @@ class TenantCreator:
             with open(source_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # Process with Jinja2 for advanced templating (like departure block)
-            content = self._process_jinja_template(content)
+            # Check if this is a workflow file (contains GitHub Actions syntax)
+            is_workflow_file = '${{' in content and ('secrets.' in content or 'inputs.' in content or 'github.' in content)
             
-            # Replace remaining simple placeholders
-            content = self._replace_placeholders(content)
+            if is_workflow_file:
+                print(f"Processing workflow file: {source_file.name}")
+                # For workflow files, only do simple placeholder replacement to avoid Jinja2 conflicts
+                content = self._replace_placeholders(content)
+            else:
+                # For non-workflow files, use full Jinja2 processing
+                content = self._process_jinja_template(content)
+                content = self._replace_placeholders(content)
             
             # Write to destination
             dest_file.parent.mkdir(parents=True, exist_ok=True)
@@ -168,11 +174,50 @@ class TenantCreator:
             elif item.is_dir():
                 self._copy_directory_with_placeholders(item, dest_item)
 
+    def _protect_github_actions_syntax(self, content):
+        """Protect GitHub Actions expressions from Jinja2 processing."""
+        import re
+        
+        # Store GitHub Actions expressions and replace with placeholders
+        self._github_actions_replacements = {}
+        counter = 0
+        
+        # Pattern to match ${{ ... }} expressions
+        pattern = r'\$\{\{[^}]+\}\}'
+        
+        def replace_match(match):
+            nonlocal counter
+            placeholder = f"__GITHUB_ACTIONS_PLACEHOLDER_{counter}__"
+            self._github_actions_replacements[placeholder] = match.group(0)
+            counter += 1
+            return placeholder
+        
+        return re.sub(pattern, replace_match, content)
+    
+    def _restore_github_actions_syntax(self, content):
+        """Restore GitHub Actions expressions after Jinja2 processing."""
+        if hasattr(self, '_github_actions_replacements'):
+            for placeholder, original in self._github_actions_replacements.items():
+                content = content.replace(placeholder, original)
+        return content
+
     def _process_jinja_template(self, content):
         """Process Jinja2 template content with template variables."""
         try:
-            # Create Jinja2 environment
-            env = Environment()
+            # Skip Jinja2 processing if content looks like a GitHub Actions workflow
+            if '${{' in content and ('secrets.' in content or 'inputs.' in content or 'github.' in content):
+                print("Skipping Jinja2 processing for GitHub Actions workflow")
+                return content
+                
+            # Create Jinja2 environment with custom delimiters to avoid conflicts
+            env = Environment(
+                variable_start_string='{{',
+                variable_end_string='}}',
+                block_start_string='{%',
+                block_end_string='%}',
+                comment_start_string='{#',
+                comment_end_string='#}'
+            )
             template = env.from_string(content)
             
             # Render template with variables
