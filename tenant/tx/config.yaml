@@ -1,0 +1,11 @@
+enable_dr: false
+
+vpc_cidr_blocks:
+  us-east-1:
+    dev: 10.1.0.0/16
+    stg: 10.2.0.0/16
+    # uat: 172.17.144.0/21
+    # prd: 172.17.152.0/21
+  us-west-2:
+    # uat: 172.17.176.0/21
+    # prd: 172.17.184.0/21
