@@ -1,0 +1,29 @@
+label_order:
+  ["namespace", "environment", "tenant", "stage", "name", "attributes"]
+enable_workspace_encryption: true
+enable_serverless: true
+
+enable_peering: false
+migrate_to_tgw: true
+
+projects:
+  edw:
+    create_catalog: true
+    enable_managed_catalog: true
+    catalogs:
+      tx_edw_stg: "/"
+    buckets:
+      landing:
+        create_queue: true
+        create_dlq: true
+      raw:
+        create_queue: false
+        create_dlq: false
+      catalog:
+        create_queue: false
+        create_dlq: false
+      
+      departure:
+        create_queue: false
+        create_dlq: false
+      
