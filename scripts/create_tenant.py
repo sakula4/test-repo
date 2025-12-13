@@ -321,34 +321,6 @@ class TenantCreator:
     def commit_and_push(self):
         """Commit changes and push to GitHub."""
         try:
-            # Configure git user for commits
-            self.git_repo.config_writer().set_value(
-                "user", "email", "41898282+github-actions[bot]@users.noreply.github.com"
-            ).release()
-            self.git_repo.config_writer().set_value(
-                "user", "name", "GitHub Actions"
-            ).release()
-            
-            # Configure git remote to use token for authentication
-            if self.github_token and self.github_repository:
-                # Use token as username with 'x-access-token' or token as both user and pass
-                auth_url = f"https://x-access-token:{self.github_token}@github.com/{self.github_repository}.git"
-                try:
-                    origin = self.git_repo.remote('origin')
-                    origin.set_url(auth_url)
-                    print("✅ Configured git remote with token authentication")
-                except Exception as remote_error:
-                    print(f"Warning: Could not configure remote URL: {remote_error}")
-                    # Alternative approach: configure git credentials helper
-                    try:
-                        self.git_repo.git.config('credential.helper', 'store --file=.git/credentials')
-                        credentials_file = self.git_repo.git_dir + '/credentials'
-                        with open(credentials_file, 'w') as f:
-                            f.write(f"https://x-access-token:{self.github_token}@github.com\n")
-                        print("✅ Configured git credentials as fallback")
-                    except Exception as cred_error:
-                        print(f"Warning: Could not configure credentials: {cred_error}")
-            
             # Add all changes
             self.git_repo.git.add(A=True)
             
@@ -372,46 +344,18 @@ Generated from templates:
             self.git_repo.index.commit(commit_message)
             print("Changes committed locally")
             
-            # Push to remote
-            origin = self.git_repo.remote('origin')
-            try:
+            # Simple push with token authentication
+            origin_url = self.git_repo.remote('origin').url
+            if self.github_token:
+                # Replace URL with token authentication
+                auth_url = origin_url.replace('https://', f'https://{self.github_token}@')
                 print(f"Pushing branch {self.branch_name} to remote...")
-                
-                # Get current branch info before push
-                current_branch = self.git_repo.active_branch
-                print(f"Current active branch: {current_branch.name}")
-                print(f"Branch commit: {current_branch.commit.hexsha}")
-                
-                # Push with explicit upstream setting
-                push_info = origin.push(refspec=f'{self.branch_name}:{self.branch_name}', force=True)
-                
-                # Verify push result
-                for info in push_info:
-                    print(f"Push result: {info.summary}")
-                    if info.flags & info.ERROR:
-                        raise Exception(f"Push failed with error: {info.summary}")
-                
-                print(f"✅ Successfully pushed branch {self.branch_name} to remote")
-                
-                # Verify the push by fetching the remote reference
-                try:
-                    origin.fetch(refspec=f'{self.branch_name}:{self.branch_name}')
-                    print(f"✅ Verified branch exists on remote")
-                except Exception as fetch_error:
-                    print(f"⚠️ Could not verify remote branch: {fetch_error}")
-                
-            except Exception as push_error:
-                print(f"❌ Push error: {push_error}")
-                # Try alternative push method
-                try:
-                    print("Trying alternative push method...")
-                    push_info = origin.push(self.branch_name, force=True)
-                    for info in push_info:
-                        print(f"Alternative push result: {info.summary}")
-                    print(f"✅ Pushed branch {self.branch_name} to remote (alternative method)")
-                except Exception as alt_push_error:
-                    print(f"❌ Alternative push failed: {alt_push_error}")
-                    raise push_error
+                self.git_repo.git.push(auth_url, f"{self.branch_name}:{self.branch_name}", force=True)
+                print(f"✅ Successfully pushed branch {self.branch_name}")
+            else:
+                # Fallback to regular push (relies on git config)
+                self.git_repo.git.push('origin', f"{self.branch_name}:{self.branch_name}", force=True)
+                print(f"✅ Successfully pushed branch {self.branch_name}")
             
         except Exception as e:
             print(f"Error committing and pushing changes: {e}")
