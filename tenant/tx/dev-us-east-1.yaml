@@ -1,0 +1,26 @@
+label_order:
+  ["namespace", "environment", "tenant", "stage", "name", "attributes"]
+enable_workspace_encryption: true
+enable_serverless: true
+
+enable_peering: false
+migrate_to_tgw: true
+
+projects:
+  bcd:
+    create_catalog: true
+    enable_managed_catalog: true
+    enable_avscan: False
+    catalogs:
+      tx_bcd_dev: "/"
+    buckets:
+      landing:
+        create_queue: true
+        create_dlq: true
+      raw:
+        create_queue: false
+        create_dlq: false
+      catalog:
+        create_queue: false
+        create_dlq: false
+      
