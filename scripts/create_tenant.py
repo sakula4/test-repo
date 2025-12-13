@@ -329,6 +329,16 @@ class TenantCreator:
                 "user", "name", "GitHub Actions"
             ).release()
             
+            # Configure git remote to use token for authentication
+            if self.github_token and self.github_repository:
+                auth_url = f"https://{self.github_token}@github.com/{self.github_repository}.git"
+                try:
+                    origin = self.git_repo.remote('origin')
+                    origin.set_url(auth_url)
+                    print("✅ Configured git remote with token authentication")
+                except Exception as remote_error:
+                    print(f"Warning: Could not configure remote URL: {remote_error}")
+            
             # Add all changes
             self.git_repo.git.add(A=True)
             
