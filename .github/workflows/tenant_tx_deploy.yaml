@@ -1,0 +1,198 @@
+name: 🚀 DeployTx
+
+on:
+  push:
+    branches: 
+      - main
+    paths:
+      - '_config/tenants/tx/**'
+      - 'databricks/**'
+      - '.github/workflows/tenant_tx.yaml'
+      - '.github/workflows/tenant_tx_deploy.yaml'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - '_config/tenants/tx/**'
+      - 'databricks/**'
+      - '.github/workflows/tenant_tx.yaml'
+      - '.github/workflows/tenant_tx_deploy.yaml'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  plan-dev:
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [dev]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: plan
+      summary: true
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+  plan-stg:
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [stg]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: plan
+      summary: true
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+  plan-uat:
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [uat]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: plan
+      summary: true
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+  plan-prd:
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [prd]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: plan
+      summary: true
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read  
+  # Development Environment
+  approve-dev:
+    if: github.event_name == 'push'
+    needs: [plan-dev]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-dev
+    steps:
+      - run: echo "Waiting for approval"
+        shell: bash
+  apply-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [approve-dev]
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [dev]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: apply
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+  # Staging Environment
+  approve-stage:
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    needs: [plan-stg]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-stg
+    steps:
+      - run: echo "Waiting for approval"
+        shell: bash
+  apply-stage:
+    needs: [approve-stage]
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [stg]
+        region: [us-east-1]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: apply
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read  
+  # UAT Environment
+  approve-uat:
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    needs: [plan-uat]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-uat
+    steps:
+      - run: echo "Waiting for approval"
+        shell: bash
+  apply-uat:
+    needs: [approve-uat]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [uat]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: apply
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+  # Production Environment
+  approve-prod:
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    needs: [plan-prd]
+    runs-on: ubuntu-22.04
+    environment: 
+      name: approve-prd
+    steps:
+      - run: echo "Waiting for approval"
+        shell: bash
+  apply-prod:
+    needs: [approve-prod]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+    strategy:
+      fail-fast: true
+      matrix:
+        env: [prd]
+        region: [us-east-1]
+    uses: ./.github/workflows/tenant_tx.yaml
+    with:
+      environment: ${{ matrix.env }}
+      aws-region: ${{ matrix.region }}
+      action: apply
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
