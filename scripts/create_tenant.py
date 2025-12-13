@@ -321,6 +321,14 @@ class TenantCreator:
     def commit_and_push(self):
         """Commit changes and push to GitHub."""
         try:
+            # Configure git user for commits
+            self.git_repo.config_writer().set_value(
+                "user", "email", "41898282+github-actions[bot]@users.noreply.github.com"
+            ).release()
+            self.git_repo.config_writer().set_value(
+                "user", "name", "GitHub Actions"
+            ).release()
+            
             # Add all changes
             self.git_repo.git.add(A=True)
             
