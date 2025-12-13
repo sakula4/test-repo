@@ -331,13 +331,23 @@ class TenantCreator:
             
             # Configure git remote to use token for authentication
             if self.github_token and self.github_repository:
-                auth_url = f"https://{self.github_token}@github.com/{self.github_repository}.git"
+                # Use token as username with 'x-access-token' or token as both user and pass
+                auth_url = f"https://x-access-token:{self.github_token}@github.com/{self.github_repository}.git"
                 try:
                     origin = self.git_repo.remote('origin')
                     origin.set_url(auth_url)
                     print("✅ Configured git remote with token authentication")
                 except Exception as remote_error:
                     print(f"Warning: Could not configure remote URL: {remote_error}")
+                    # Alternative approach: configure git credentials helper
+                    try:
+                        self.git_repo.git.config('credential.helper', 'store --file=.git/credentials')
+                        credentials_file = self.git_repo.git_dir + '/credentials'
+                        with open(credentials_file, 'w') as f:
+                            f.write(f"https://x-access-token:{self.github_token}@github.com\n")
+                        print("✅ Configured git credentials as fallback")
+                    except Exception as cred_error:
+                        print(f"Warning: Could not configure credentials: {cred_error}")
             
             # Add all changes
             self.git_repo.git.add(A=True)
