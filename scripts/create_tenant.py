@@ -344,16 +344,27 @@ Generated from templates:
             self.git_repo.index.commit(commit_message)
             print("Changes committed locally")
             
-            # Simple push with token authentication
-            origin_url = self.git_repo.remote('origin').url
-            if self.github_token:
-                # Replace URL with token authentication
-                auth_url = origin_url.replace('https://', f'https://{self.github_token}@')
-                print(f"Pushing branch {self.branch_name} to remote...")
-                self.git_repo.git.push(auth_url, f"{self.branch_name}:{self.branch_name}", force=True)
-                print(f"✅ Successfully pushed branch {self.branch_name}")
+            # Simple push with temporary remote URL update
+            print(f"Pushing branch {self.branch_name} to remote...")
+            
+            if self.github_token and self.github_repository:
+                # Temporarily update remote URL with token
+                origin = self.git_repo.remote('origin')
+                original_url = origin.url
+                auth_url = f"https://x-access-token:{self.github_token}@github.com/{self.github_repository}.git"
+                
+                # Set authenticated URL
+                origin.set_url(auth_url)
+                
+                try:
+                    # Push the branch
+                    self.git_repo.git.push('origin', f"{self.branch_name}:{self.branch_name}", force=True)
+                    print(f"✅ Successfully pushed branch {self.branch_name}")
+                finally:
+                    # Restore original URL
+                    origin.set_url(original_url)
             else:
-                # Fallback to regular push (relies on git config)
+                # Fallback to regular push
                 self.git_repo.git.push('origin', f"{self.branch_name}:{self.branch_name}", force=True)
                 print(f"✅ Successfully pushed branch {self.branch_name}")
             
