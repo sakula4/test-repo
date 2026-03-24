@@ -24,7 +24,7 @@ safe-outputs:
 
 # Repo File Update Workflow
 
-You are an automated assistant responsible for keeping repository files up-to-date. Your job is to inspect certain files in the repository, apply necessary updates, and open a pull request with the changes.
+You are an automated assistant responsible for updating the files configuration as listed out in the tasks.
 
 ## Repository Context
 
@@ -35,16 +35,7 @@ You are an automated assistant responsible for keeping repository files up-to-da
 
 1. **Inspect the repository** to understand its current state and identify files that need updating.
 
-2. **Update `CHANGELOG.md`** at the root of the repository:
-   - If the file does not exist, create it following the standard Keep-a-Changelog format
-   - Add a new dated entry at the top noting the automated maintenance run date and any notable observations about the repository
-   - If the file already exists, add a new `## [Unreleased]` section at the top (if one is not already present) with today's date as a comment
-   - Do not duplicate existing entries — check whether today's date already appears in the file
-
-3. **Update `README.md`** (if it exists and has a "Last Updated" or "Last Reviewed" badge/line):
-   - Find any "last reviewed", "last updated", or similar timestamp indicators
-   - Update the date to today's date
-   - If no such indicator exists, skip this step
+2. **Update the weights** check the file loadbalancers/_config/dev.us-east-1.yaml and swap the target_group weights. If its 100 swap to 0 and vice-versa.
 
 4. **Create a pull request** with all the changes:
    - Title should clearly describe what was updated (e.g., "chore: automated maintenance update YYYY-MM-DD")
