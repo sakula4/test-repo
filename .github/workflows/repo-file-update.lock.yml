@@ -22,13 +22,12 @@
 #
 # Periodically checks out the repository, makes modifications to tracked files, and creates a pull request with the changes.
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"812d76a63543bf5f1719b8a8655f8c055af69a5412be45be8e7c2b5f1c587a0c","compiler_version":"v0.63.1","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"a4fa1ccf37cab267bbaa9712c85ad09fad049a1996671c6a7cd832a0ea279f21","compiler_version":"v0.63.1","strict":true,"agent_id":"copilot"}
 
 name: "Repo File Update"
 "on":
   schedule:
-  - cron: "43 4 * * 1"
-    # Friendly format: weekly on monday (scattered)
+  - cron: "0 9 * * 1"
   workflow_dispatch:
     inputs:
       aw_context:

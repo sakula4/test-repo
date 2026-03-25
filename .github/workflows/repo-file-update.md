@@ -35,11 +35,13 @@ You are an automated assistant responsible for updating the files configuration 
 
 1. **Inspect the repository** to understand its current state and identify the load balancer configuration files.
 
-2. **Configure AWS credentials** using the provided secrets:
+2. **Configure AWS credentials** using environment variables or AWS CLI profile:
    ```bash
-   export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
-   export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+   # Ensure AWS credentials are configured (via environment, profile, or OIDC)
    export AWS_DEFAULT_REGION="us-east-1"
+   
+   # Test AWS access
+   aws sts get-caller-identity
    ```
 
 3. **Discover current load balancer weights** by running these commands:
@@ -72,6 +74,7 @@ You are an automated assistant responsible for updating the files configuration 
 
 ## Guidelines
 
+- **AWS Authentication**: AWS credentials must be available through environment variables, IAM roles, or OIDC. Test access with `aws sts get-caller-identity`
 - **Validation**: Ensure the total weights for each application equal 100%
 - **Safety**: Only update weights if the configuration file exists and has the expected structure
 - **Documentation**: Include before/after weight values in the PR description
