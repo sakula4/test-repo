@@ -56,13 +56,16 @@ You are an automated assistant responsible for updating the files configuration 
    aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --output json | jq '[.Rules[] | select(.Priority != "default") | {Priority: .Priority | tonumber, HostHeader: .Conditions[0].Values[0], TargetGroups: [.Actions[0].ForwardConfig.TargetGroups[] | {TargetGroupName: (.TargetGroupArn | split("/")[1]), Weight: .Weight}]}]'
    ```
 
-4. **Update the configuration file** `loadbalancers/_config/dev.us-east-1.yaml`:
-   - Find the target group weight configurations
-   - For each application (gw360api and gw360ui):
-     - If blue weight is 100 and green weight is 0 → swap to blue: 0, green: 100
-     - If blue weight is 0 and green weight is 100 → swap to blue: 100, green: 0
-     - If weights are split (e.g., 90/10) → swap them (10/90)
-   - This simulates a blue-green deployment toggle
+4. **Update the configuration file** `loadbalancer/_config/dev.us-east-1.yaml`:
+   - Find the target group weight configurations under `apps_alb.rules` and `apps_alb.gw360ui`
+   - For each application:
+     - **gw360api**: Look for `target_groups` array under `apps_alb.rules.actions[0]`
+     - **gw360ui**: Look for `target_groups` array under `apps_alb.gw360ui.actions[0]`
+   - Swap the weights between the two target groups:
+     - If weights are [0, 100] → change to [100, 0]
+     - If weights are [100, 0] → change to [0, 100]
+     - If weights are [90, 10] → change to [10, 90]
+   - This simulates toggling between blue-green deployments
 
 5. **Create a pull request** with all the changes:
    - Title should be: "chore: automated blue-green weight toggle YYYY-MM-DD"
@@ -76,7 +79,7 @@ You are an automated assistant responsible for updating the files configuration 
 
 - **AWS Authentication**: AWS credentials must be available through environment variables, IAM roles, or OIDC. Test access with `aws sts get-caller-identity`
 - **Validation**: Ensure the total weights for each application equal 100%
-- **Safety**: Only update weights if the configuration file exists and has the expected structure
+- **Safety**: Only update weights if the configuration file `loadbalancer/_config/dev.us-east-1.yaml` exists and has the expected YAML structure with `apps_alb` section
 - **Documentation**: Include before/after weight values in the PR description
 - **Error handling**: If AWS CLI commands fail, document the error and exit gracefully
 - **No changes**: If weights are already in the desired state, do not create a pull request
