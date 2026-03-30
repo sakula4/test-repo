@@ -21,12 +21,12 @@ jobs:
           terraform_version: 1.7.5 # pin as appropriate
 
       - name: Configure Terraform plugin cache
-      run: |
-        mkdir -p "$HOME/.terraform.d/plugin-cache"
-        cat > "$HOME/.terraformrc" <<'EOF'
-        plugin_cache_dir   = "$HOME/.terraform.d/plugin-cache"
-        disable_checkpoint = true
-        EOF
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          cat > "$HOME/.terraformrc" <<'EOF'
+          plugin_cache_dir   = "$HOME/.terraform.d/plugin-cache"
+          disable_checkpoint = true
+          EOF
 
       - name: Restore Terraform providers cache
         uses: actions/cache@v4
