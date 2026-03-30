@@ -1,0 +1,42 @@
+name: Terraform plan (uses providers cache)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra # change to your terraform directory (or remove)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5 # must match (or at least be compatible)
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          cat > "$HOME/.terraformrc" <<'EOF'
+          plugin_cache_dir   = "$HOME/.terraform.d/plugin-cache"
+          disable_checkpoint = true
+          EOF
+
+      - name: Restore Terraform providers cache (created by other workflow)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-providers-${{ hashFiles('infra/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-providers-
+
+      - name: Terraform init (should be fast if cache hit)
+        run: terraform init -input=false
+
+      - name: Terraform plan
+        run: terraform plan -input=false

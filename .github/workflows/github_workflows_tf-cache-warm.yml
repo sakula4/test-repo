@@ -1,0 +1,40 @@
+name: Warm Terraform providers cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *" # daily at 03:00 UTC
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra # change to your terraform directory (or remove)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5 # pin as appropriate
+
+      - name: Configure Terraform plugin cache
+      run: |
+        mkdir -p "$HOME/.terraform.d/plugin-cache"
+        cat > "$HOME/.terraformrc" <<'EOF'
+        plugin_cache_dir   = "$HOME/.terraform.d/plugin-cache"
+        disable_checkpoint = true
+        EOF
+
+      - name: Restore Terraform providers cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-providers-${{ hashFiles('infra/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-providers-
+
+      - name: Terraform init (downloads providers into cache)
+        run: terraform init -input=false
