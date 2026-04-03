@@ -1,0 +1,100 @@
+name: Create ECS Task Definition
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_family:
+        description: 'Task Definition Family Name'
+        required: true
+        type: string
+      app_name:
+        description: 'Application Container Name'
+        required: true
+        type: string
+      app_image_uri:
+        description: 'Application Image URI (e.g., 350828950339.dkr.ecr.us-east-1.amazonaws.com/gia-gw360-api:dev-af0c7ef)'
+        required: true
+        type: string
+      log_group_name:
+        description: 'CloudWatch Log Group Name, /aws/ecs/containerinsights/gia-dev-ue1-gw360-api-logs'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        type: string
+        default: 'us-east-1'
+
+jobs:
+  create-task-definition:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Task Definition from Template
+        run: |
+          # Read the template
+          template=$(cat task-definition-template.json)
+          
+          # Replace placeholders with input values
+          task_def=$(echo "$template" | \
+            sed "s|{{TASK_FAMILY}}|${{ inputs.task_family }}|g" | \
+            sed "s|{{APP_NAME}}|${{ inputs.app_name }}|g" | \
+            sed "s|{{APP_IMAGE_URI}}|${{ inputs.app_image_uri }}|g" | \
+            sed "s|{{LOG_GROUP_NAME}}|${{ inputs.log_group_name }}|g")
+          
+          # Save the generated task definition
+          echo "$task_def" > task-definition.json
+          
+          # Display the generated task definition for verification
+          echo "Generated Task Definition:"
+          cat task-definition.json
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Register ECS Task Definition
+        id: register-task-def
+        run: |
+          # Register the task definition with ECS
+          response=$(aws ecs register-task-definition \
+            --cli-input-json file://task-definition.json \
+            --region ${{ inputs.aws_region }})
+          
+          # Extract the task definition ARN and revision
+          task_def_arn=$(echo "$response" | jq -r '.taskDefinition.taskDefinitionArn')
+          revision=$(echo "$response" | jq -r '.taskDefinition.revision')
+          
+          echo "Task Definition registered successfully!"
+          echo "ARN: $task_def_arn"
+          echo "Revision: $revision"
+          
+          # Set outputs for potential use in subsequent steps
+          echo "task_definition_arn=$task_def_arn" >> $GITHUB_OUTPUT
+          echo "revision=$revision" >> $GITHUB_OUTPUT
+
+      - name: Upload Task Definition Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-definition-${{ inputs.task_family }}-${{ steps.register-task-def.outputs.revision }}
+          path: task-definition.json
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## Task Definition Created Successfully! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Task Family:** ${{ inputs.task_family }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Application Name:** ${{ inputs.app_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image URI:** ${{ inputs.app_image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Log Group:** ${{ inputs.log_group_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Task Definition ARN:** ${{ steps.register-task-def.outputs.task_definition_arn }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Revision:** ${{ steps.register-task-def.outputs.revision }}" >> $GITHUB_STEP_SUMMARY
