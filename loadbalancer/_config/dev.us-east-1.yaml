@@ -3,7 +3,7 @@ apps_alb:
     priority: 11
     actions:
       - type: weighted-forward
-        target_groups: [{target_group_key: gw360api-tg01-8080, weight: 0}, {target_group_key: gw360api-tg02-8080, weight: 100}]
+        target_groups: [{target_group_key: gw360api-tg01-8080, weight: 100}, {target_group_key: gw360api-tg02-8080, weight: 0}]
     conditions:
       - host_header:
           values: [api.dev.gwtacuity.com]
@@ -13,4 +13,4 @@ apps_alb:
     priority: 10
     actions:
       - type: weighted-forward
-        target_groups: [{target_group_key: gw360ui-tg01-80, weight: 100}, {target_group_key: gw360ui-tg02-80, weight: 0}]
+        target_groups: [{target_group_key: gw360ui-tg01-80, weight: 0}, {target_group_key: gw360ui-tg02-80, weight: 100}]
